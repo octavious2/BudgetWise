@@ -7,7 +7,7 @@ export default function App() {
       <Text style={styles.brandText}>BudgetWise</Text>
       {/* cards placeholder */}
       <View style={styles.statusIndicator}>
-        <Text style={styles.subText}>System Ready: Day 1</Text>
+        <Text style={styles.subText}>Track spending set budgets and manage your finances all from one app</Text>
       </View>
 
       <StatusBar style="light" />
@@ -40,5 +40,8 @@ const styles = StyleSheet.create({
     color: '#a1a1aa',
     fontSize: 14,
     fontWeight: '500',
+    textAlign: 'center',
+    lineHeight: 25,
+    marginHorizontal: 40,
   },
 });
