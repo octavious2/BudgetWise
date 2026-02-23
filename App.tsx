@@ -1,3 +1,4 @@
+import { GlassCard } from './src/components/GlassCard';
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import{StyleSheet, Text, View, ActivityIndicator,} from 'react-native';
@@ -31,6 +32,13 @@ if(!fontsLoaded){
         <SafeAreaView style={styles.container}>
           <View style={styles.content}> 
             <Text style={styles.brandText}>BudgetWise</Text>
+            
+            {/*glasscard */}
+            <GlassCard style={styles.mainCard}>
+              <Text style={styles.cardTitle}>Total Balance</Text>
+              <Text style={styles.cardAmount}>$12,450.00</Text>
+              <Text style={styles.cardFooter}>+ 2.5% this month</Text>
+            </GlassCard>
 
             <View style={styles.statusIndicator}>
               <Text style={styles.subText}>
@@ -72,6 +80,28 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     borderColor: 'rgba(249, 115, 22, 0.2)',
+  },
+
+  mainCard: {
+    width: '90%',
+    marginTop: 40,
+  },
+  cardTitle: {
+    color: Theme.colors.textSecondary,
+    fontFamily: 'SpaceGrotesk-Regular',
+    fontSize: 16,
+    marginBottom: 8,
+  },
+  cardAmount: {
+    color: Theme.colors.text,
+    fontFamily: 'SpaceGrotesk-Bold',
+    fontSize: 32,
+    marginBottom: 12,
+  },
+  cardFooter: {
+    color: Theme.colors.success,
+    fontFamily: 'SpaceGrotesk-Regular',
+    fontSize: 14,
   },
 
   subText: {
