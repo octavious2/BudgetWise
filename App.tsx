@@ -1,6 +1,7 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import{StyleSheet, Text, View, ActivityIndicator,} from 'react-native';
+import {SafeAreaProvider, SafeAreaView} from 'react-native-safe-area-context';
 import {
   useFonts,
   SpaceGrotesk_400Regular,
@@ -26,21 +27,31 @@ if(!fontsLoaded){
   );
 }
     return (
-    <View style={styles.container}>
-      <Text style={styles.brandText}>BudgetWise</Text>
+      <SafeAreaProvider>
+        <SafeAreaView style={styles.container}>
+          <View style={styles.content}> 
+            <Text style={styles.brandText}>BudgetWise</Text>
 
-      <View style={styles.statusIndicator}>
-        <Text style={styles.subText}>Track spending set budgets and manage your finances all from one app</Text>
-      </View>
-
-      <StatusBar style="light" />
-    </View>
+            <View style={styles.statusIndicator}>
+              <Text style={styles.subText}>
+                Track spending, set budgets and{"\n"}manage your finances all from one app
+              </Text>
+            </View>
+          </View>
+        </SafeAreaView>
+        <StatusBar style="light" />
+      </SafeAreaProvider> 
   );
 }
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Theme.colors.background, 
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  content: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
