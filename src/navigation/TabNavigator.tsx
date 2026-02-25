@@ -1,5 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { RouteProp } from '@react-navigation/native';
 import { Home, Wallet, PieChart, LayoutGrid, User } from 'lucide-react-native';
 import { Theme } from '../theme/colors';
 
@@ -15,7 +16,7 @@ const Tab = createBottomTabNavigator();
 export const TabNavigator = () => {
   return (
     <Tab.Navigator
-      screenOptions={{
+      screenOptions={({ route }: { route: RouteProp<any, any> }) => ({
         headerShown: false, // Hide the default top header
         tabBarStyle: {
           backgroundColor: Theme.colors.background,
@@ -27,14 +28,14 @@ export const TabNavigator = () => {
         tabBarActiveTintColor: Theme.colors.primary,
         tabBarInactiveTintColor: Theme.colors.textSecondary,
 
-        tabBarIcon: ({color, size}) => {
+        tabBarIcon: ({ color, size }) => {
           if (route.name === 'Home') return <Home color={color} size={size} />;
           if (route.name === 'Wallet') return <Wallet color={color} size={size} />;
           if (route.name === 'Budget') return <PieChart color={color} size={size} />;
           if (route.name === 'Services') return <LayoutGrid color={color} size={size} />;
           if (route.name === 'Profile') return <User color={color} size={size} />;
         },
-      }}
+      })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Wallet" component={WalletScreen} />
