@@ -21,7 +21,7 @@ export default function HomeScreen() {
           <Text style={styles.cardTitle}>Total Balance</Text>
           <Text style={styles.cardAmount}>$12,450.00</Text>
         </GlassCard>
-        
+
         <View style={styles.actionRow}>
           <ActionButton icon={<Send size={24} color="white" />} label="Send" />
           <ActionButton icon={<Plus size={24} color="white" />} label="Top Up" />
@@ -49,7 +49,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(249, 115, 22, 0.2)',
   },
-// styles for the glassmorphism card
+// styles for the glassmorphism card 
   mainCard: {
     width: '90%',
     marginTop: 40,
@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 
-  // styles for the action buttons
+// styles for the action buttons 
   actionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
