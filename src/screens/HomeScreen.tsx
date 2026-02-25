@@ -1,25 +1,32 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Send, Plus, CreditCard } from 'lucide-react-native';
 import { GlassCard } from '../components/GlassCard';
 import { Theme } from '../theme/colors';
 
+const ActionButton = ({ icon, label }: { icon: React.ReactNode, label: string }) => (
+  <View style={styles.actionItem}>
+    <View style={styles.iconCircle}>
+      {icon}
+    </View>
+    <Text style={styles.actionLabel}>{label}</Text>
+  </View>
+);
 export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.brandText}>BudgetWise</Text>
-
-        <View style={styles.statusIndicator}>
-          <Text style={styles.subText}>
-            Track spending, set budgets and{"\n"}manage your finances
-          </Text>
-        </View>
-
         <GlassCard style={styles.mainCard}>
           <Text style={styles.cardTitle}>Total Balance</Text>
           <Text style={styles.cardAmount}>$12,450.00</Text>
         </GlassCard>
+        
+        <View style={styles.actionRow}>
+          <ActionButton icon={<Send size={24} color="white" />} label="Send" />
+          <ActionButton icon={<Plus size={24} color="white" />} label="Top Up" />
+          <ActionButton icon={<CreditCard size={24} color="white" />} label="Bills" />
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -33,15 +40,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-
-  brandText: {
-    color: Theme.colors.primary,
-    fontSize: 40,
-    fontWeight: '900',
-    letterSpacing: -1,
-    fontFamily: 'SpaceGrotesk-Bold',
-  },
-
   statusIndicator: {
     marginTop: 10,
     paddingHorizontal: 12,
@@ -51,7 +49,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(249, 115, 22, 0.2)',
   },
-
+// styles for the glassmorphism card
   mainCard: {
     width: '90%',
     marginTop: 40,
@@ -74,13 +72,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 
-  subText: {
+  // styles for the action buttons
+  actionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '90%',
+    marginTop: 30,
+    paddingHorizontal: 10,
+  },
+  actionItem: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  iconCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  actionLabel: {
     color: Theme.colors.textSecondary,
     fontSize: 14,
-    fontWeight: '500',
-    textAlign: 'center',
-    lineHeight: 25,
-    marginHorizontal: 40,
     fontFamily: 'SpaceGrotesk-Regular',
   },
 });
