@@ -114,7 +114,7 @@ export default function AuthScreen() {
                 <TouchableOpacity
                     style={styles.button}
                     disabled={loading}
-                    onPress={() => console.log('Auth triggered')}
+                    onPress={handleAuth}
                 >
                     <Text style={styles.buttonText}>
                         {isSignUp ? 'Sign Up' : 'Login'}
