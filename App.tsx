@@ -3,13 +3,10 @@ import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, ActivityIndicator, } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import {
-  useFonts, SpaceGrotesk_400Regular, SpaceGrotesk_700Bold
-} from '@expo-google-fonts/space-grotesk';
+import { useFonts, SpaceGrotesk_400Regular, SpaceGrotesk_700Bold } from '@expo-google-fonts/space-grotesk';
 import { Theme } from './src/theme/colors';
 import { NavigationContainer } from '@react-navigation/native';
 import { TabNavigator } from './src/navigation/TabNavigator';
-
 
 export default function App() {
 
@@ -27,6 +24,7 @@ export default function App() {
         /</View>
     );
   }
+
   return (
     <SafeAreaProvider>
       <NavigationContainer>

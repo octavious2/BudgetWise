@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, Dimensions, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Theme } from '../../theme/colors';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
 const { width } = Dimensions.get('window');
 
@@ -27,9 +28,24 @@ export default function OnboardingScreen({ navigation }: any) {
                 }}
                 renderItem={({ item }) => (
                     <View style={styles.slide}>
-                        <View style={styles.imagePlaceholder} />
-                        <Text style={styles.title}>{item.title}</Text>
-                        <Text style={styles.description}>{item.desc}</Text>
+                        <Animated.View
+                            entering={FadeInUp.duration(600).delay(200)}
+                            style={styles.imagePlaceholder}
+                        />
+
+                        <Animated.Text
+                            entering={FadeInDown.duration(600).delay(400)}
+                            style={styles.title}
+                        >
+                            {item.title}
+                        </Animated.Text>
+
+                        <Animated.Text
+                            entering={FadeInDown.duration(600).delay(600)}
+                            style={styles.description}
+                        >
+                            {item.desc}
+                        </Animated.Text>
                     </View>
                 )}
             />
