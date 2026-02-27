@@ -1,22 +1,16 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Send, Plus, CreditCard } from 'lucide-react-native';
 import { GlassCard } from '../components/GlassCard';
+import { ActionButton } from '../components/ActionButton';
 import { Theme } from '../theme/colors';
 
-const ActionButton = ({ icon, label }: { icon: React.ReactNode, label: string }) => (
-  <View style={styles.actionItem}>
-    <View style={styles.iconCircle}>
-      {icon}
-    </View>
-    <Text style={styles.actionLabel}>{label}</Text>
-  </View>
-);
+
 export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+      <ScrollView contentContainerStyle={styles.content}>
         <GlassCard style={styles.mainCard}>
           <Text style={styles.cardTitle}>Total Balance</Text>
           <Text style={styles.cardAmount}>$12,450.00</Text>
@@ -27,7 +21,7 @@ export default function HomeScreen() {
           <ActionButton icon={<Plus size={24} color="white" />} label="Top Up" />
           <ActionButton icon={<CreditCard size={24} color="white" />} label="Bills" />
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -49,7 +43,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(249, 115, 22, 0.2)',
   },
-// styles for the glassmorphism card 
+  // styles for the glassmorphism card 
   mainCard: {
     width: '90%',
     marginTop: 40,
@@ -72,31 +66,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 
-// styles for the action buttons 
   actionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '90%',
     marginTop: 30,
     paddingHorizontal: 10,
-  },
-  actionItem: {
-    alignItems: 'center',
-    gap: 8,
-  },
-  iconCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  actionLabel: {
-    color: Theme.colors.textSecondary,
-    fontSize: 14,
-    fontFamily: 'SpaceGrotesk-Regular',
   },
 });
