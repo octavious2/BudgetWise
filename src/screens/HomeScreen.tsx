@@ -2,9 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
-import { Send, Plus, CreditCard, Eye, 
-  EyeOff, PhoneCall, Wifi, Zap, Droplets, ChevronRight,
-  Tv, LayoutGrid} from 'lucide-react-native';
+import {
+  Send, Download, Upload, CreditCard, Eye, EyeOff, PhoneCall, 
+  Wifi, Zap, Droplets, ChevronRight, Tv, LayoutGrid
+} from 'lucide-react-native';
 import { HomeHeader } from '../components/HomeHeader';
 import { GlassCard } from '../components/GlassCard';
 import { ActionButton } from '../components/ActionButton';
@@ -71,8 +72,8 @@ export default function HomeScreen() {
 
         <View style={styles.actionRow}>
           <ActionButton icon={<Send size={24} color="white" />} label="Send" />
-          <ActionButton icon={<Plus size={24} color="white" />} label="Top Up" />
-          <ActionButton icon={<CreditCard size={24} color="white" />} label="Bills" />
+          <ActionButton icon={<Download size={24} color="white" />} label="Deposit" />
+          <ActionButton icon={<Upload size={24} color="white" />} label="Withdraw" />
         </View>
 
         <View style={styles.sectionHeader}>
