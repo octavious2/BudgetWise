@@ -6,14 +6,16 @@ import { Theme } from '../theme/colors';
 interface ActionButtonProps {
     icon: React.ReactNode;
     label: string;
-    onPress?: () => void; // Optional function for when we add logic later
+    onPress?: () => void; 
 }
 
 export const ActionButton = ({ icon, label, onPress }: ActionButtonProps) => {
     return (
         <TouchableOpacity
             style={styles.actionItem}
-            onPress={onPress}
+            onPress={() => {
+                if (onPress) onPress();
+            }}
             activeOpacity={0.7}
         >
             <View style={styles.iconCircle}>

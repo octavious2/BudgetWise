@@ -78,11 +78,10 @@ export default function HomeScreen() {
             icon={<Download size={24} color="white" />}
             label="Deposit"
             onPress={() => {
-              console.log("Button Triggered!"); 
               setShowDeposit(true);
             }}
           />
-          <ActionButton icon={<Download size={24} color="white" />} label="Deposit" />
+          <ActionButton icon={<Send size={24} color="white" />} label="Send" />
           <ActionButton icon={<Upload size={24} color="white" />} label="Withdraw" />
         </View>
 
