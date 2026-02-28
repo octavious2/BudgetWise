@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Send, Plus, CreditCard } from 'lucide-react-native';
+import { HomeHeader } from '../components/HomeHeader';
 import { GlassCard } from '../components/GlassCard';
 import { ActionButton } from '../components/ActionButton';
 import { Theme } from '../theme/colors';
@@ -11,9 +12,12 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
+
+        <HomeHeader name="User" />
+
         <GlassCard style={styles.mainCard}>
           <Text style={styles.cardTitle}>Total Balance</Text>
-          <Text style={styles.cardAmount}>$12,450.00</Text>
+          <Text style={styles.cardAmount}>$12,450</Text>
         </GlassCard>
 
         <View style={styles.actionRow}>
@@ -27,12 +31,13 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Theme.colors.background, justifyContent: 'center', alignItems: 'center' },
+  container: { flex: 1, backgroundColor: Theme.colors.background },
   text: { color: 'white', fontFamily: 'SpaceGrotesk-Bold', fontSize: 24 },
   content: {
-    flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 40,
   },
   statusIndicator: {
     marginTop: 10,
@@ -45,8 +50,8 @@ const styles = StyleSheet.create({
   },
   // styles for the glassmorphism card 
   mainCard: {
-    width: '90%',
-    marginTop: 40,
+    width: '100%',
+    marginTop: 20,
   },
   cardTitle: {
     color: Theme.colors.textSecondary,
@@ -65,11 +70,10 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceGrotesk-Regular',
     fontSize: 14,
   },
-
   actionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    width: '90%',
+    width: '100%',
     marginTop: 30,
     paddingHorizontal: 10,
   },
