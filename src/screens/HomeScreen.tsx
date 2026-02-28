@@ -1,23 +1,52 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { supabase } from '../lib/supabase';
 import { Send, Plus, CreditCard } from 'lucide-react-native';
 import { HomeHeader } from '../components/HomeHeader';
 import { GlassCard } from '../components/GlassCard';
 import { ActionButton } from '../components/ActionButton';
 import { Theme } from '../theme/colors';
 
-
 export default function HomeScreen() {
+  const [displayName, setDisplayName] = useState('User');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getProfile();
+  }, []);
+
+  async function getProfile() {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('Current User ID:', user?.id);
+
+      if (user) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', user.id)
+          .single();
+
+        console.log('Database Result:', data);
+
+        if (data) setDisplayName(data.full_name);
+      }
+    } catch (error: any) {
+      console.log('Fetch Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
 
-        <HomeHeader name="User" />
+        <HomeHeader name={displayName} />
 
         <GlassCard style={styles.mainCard}>
           <Text style={styles.cardTitle}>Total Balance</Text>
-          <Text style={styles.cardAmount}>$12,450</Text>
+          <Text style={styles.cardAmount}>UGX 12,450</Text>
         </GlassCard>
 
         <View style={styles.actionRow}>
@@ -28,27 +57,16 @@ export default function HomeScreen() {
       </ScrollView>
     </SafeAreaView>
   );
-}
+} 
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Theme.colors.background },
-  text: { color: 'white', fontFamily: 'SpaceGrotesk-Bold', fontSize: 24 },
   content: {
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 40,
   },
-  statusIndicator: {
-    marginTop: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: 'rgba(249, 115, 22, 0.1)',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(249, 115, 22, 0.2)',
-  },
-  // styles for the glassmorphism card 
   mainCard: {
     width: '100%',
     marginTop: 20,
@@ -64,11 +82,6 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceGrotesk-Bold',
     fontSize: 32,
     marginBottom: 12,
-  },
-  cardFooter: {
-    color: Theme.colors.success,
-    fontFamily: 'SpaceGrotesk-Regular',
-    fontSize: 14,
   },
   actionRow: {
     flexDirection: 'row',
