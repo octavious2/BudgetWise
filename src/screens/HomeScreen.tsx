@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
-import { Send, Plus, CreditCard } from 'lucide-react-native';
+import { Send, Plus, CreditCard, Eye, EyeOff } from 'lucide-react-native';
 import { HomeHeader } from '../components/HomeHeader';
 import { GlassCard } from '../components/GlassCard';
 import { ActionButton } from '../components/ActionButton';
@@ -11,6 +11,7 @@ import { Theme } from '../theme/colors';
 export default function HomeScreen() {
   const [displayName, setDisplayName] = useState('User');
   const [loading, setLoading] = useState(true);
+  const [isBalanceVisible, setIsBalanceVisible] = useState(true);
 
   useEffect(() => {
     getProfile();
@@ -45,8 +46,24 @@ export default function HomeScreen() {
         <HomeHeader name={displayName} />
 
         <GlassCard style={styles.mainCard}>
-          <Text style={styles.cardTitle}>Total Balance</Text>
-          <Text style={styles.cardAmount}>UGX 12,450</Text>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>Total Balance</Text>
+
+            {/* 2. Toggle Button */}
+            <TouchableOpacity
+              onPress={() => setIsBalanceVisible(!isBalanceVisible)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              {isBalanceVisible ? (
+                <Eye size={20} color={Theme.colors.textSecondary} />
+              ) : (
+                <EyeOff size={20} color={Theme.colors.textSecondary} />
+              )}
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.cardAmount}>
+            {isBalanceVisible ? 'UGX 12,450' : 'UGX ••••••'}
+          </Text>
         </GlassCard>
 
         <View style={styles.actionRow}>
@@ -71,6 +88,12 @@ const styles = StyleSheet.create({
     width: '100%',
     marginTop: 20,
   },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   cardTitle: {
     color: Theme.colors.textSecondary,
     fontFamily: 'SpaceGrotesk-Regular',
@@ -82,6 +105,7 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceGrotesk-Bold',
     fontSize: 32,
     marginBottom: 12,
+    minWidth: 200,
   },
   actionRow: {
     flexDirection: 'row',
