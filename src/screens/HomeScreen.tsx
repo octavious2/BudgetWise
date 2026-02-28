@@ -10,6 +10,7 @@ import { HomeHeader } from '../components/HomeHeader';
 import { GlassCard } from '../components/GlassCard';
 import { ActionButton } from '../components/ActionButton';
 import {ServiceIcon} from '../components/ServiceIcon';
+import { formatUGX } from '../utils/currency';
 import { Theme } from '../theme/colors';
 
 export default function HomeScreen() {
@@ -66,7 +67,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
           <Text style={styles.cardAmount}>
-            {isBalanceVisible ? 'UGX 12,450' : 'UGX ••••••'}
+            {isBalanceVisible ? formatUGX(12450) : 'UGX ••••••'}
           </Text>
         </GlassCard>
 
