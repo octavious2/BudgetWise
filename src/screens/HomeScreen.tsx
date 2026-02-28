@@ -9,6 +9,7 @@ import {
 import { HomeHeader } from '../components/HomeHeader';
 import { GlassCard } from '../components/GlassCard';
 import { ActionButton } from '../components/ActionButton';
+import { DepositModal } from '../components/DepositModal';
 import {ServiceIcon} from '../components/ServiceIcon';
 import { formatUGX } from '../utils/currency';
 import { Theme } from '../theme/colors';
@@ -17,6 +18,7 @@ export default function HomeScreen() {
   const [displayName, setDisplayName] = useState('User');
   const [loading, setLoading] = useState(true);
   const [isBalanceVisible, setIsBalanceVisible] = useState(true);
+  const [showDeposit, setShowDeposit] = useState(false);
 
   useEffect(() => {
     getProfile();
@@ -72,7 +74,14 @@ export default function HomeScreen() {
         </GlassCard>
 
         <View style={styles.actionRow}>
-          <ActionButton icon={<Send size={24} color="white" />} label="Send" />
+          <ActionButton
+            icon={<Download size={24} color="white" />}
+            label="Deposit"
+            onPress={() => {
+              console.log("Button Triggered!"); 
+              setShowDeposit(true);
+            }}
+          />
           <ActionButton icon={<Download size={24} color="white" />} label="Deposit" />
           <ActionButton icon={<Upload size={24} color="white" />} label="Withdraw" />
         </View>
@@ -93,6 +102,10 @@ export default function HomeScreen() {
           <ServiceIcon icon={<LayoutGrid size={22} color="#94a3b8" />} label="More" />
         </View>
       </ScrollView>
+      <DepositModal
+        isVisible={showDeposit}
+        onClose={() => setShowDeposit(false)}
+      />
     </SafeAreaView>
   );
 } 
