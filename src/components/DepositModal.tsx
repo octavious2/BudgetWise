@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
+import { supabase } from '../lib/supabase';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { ActionModal } from './ActionModal';
 import { Smartphone } from 'lucide-react-native';
 import { Theme } from '../theme/colors';
@@ -8,7 +9,55 @@ const QUICK_AMOUNTS = [10000, 50000, 100000,];
 
 export const DepositModal = ({ isVisible, onClose }: { isVisible: boolean; onClose: () => void }) => {
     const [amount, setAmount] = useState('');
+    const [loading, setLoading] = useState(false);
     const [provider, setProvider] = useState<'mtn' | 'airtel'>('mtn');
+
+    const handleDeposit = async () => {
+        // 1. Basic Validation
+        const numAmount = parseFloat(amount);
+        if (isNaN(numAmount) || numAmount <= 500) {
+            alert("Please enter a valid amount (Min: 500 UGX)");
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            // 2. Get the current user
+            const { data: { user } } = await supabase.auth.getUser();
+
+            if (!user) throw new Error("User not found");
+
+            // 3. Insert into our new 'transactions' table
+            const { error } = await supabase
+                .from('transactions')
+                .insert([
+                    {
+                        profile_id: user.id,
+                        amount: numAmount,
+                        type: 'deposit',
+                        provider: provider,
+                        category: 'Income',
+                        description: 'Mobile Money Deposit',
+                        status: 'completed' // In a real app, this would be 'pending' until callback
+                    }
+                ]);
+
+            if (error) throw error;
+
+            // 4. Success!
+            console.log("Deposit Successful!");
+            setAmount(''); // Clear input
+            onClose();     // Close modal
+
+            // We will add a "Refresh Balance" trigger here in the next step
+
+        } catch (error: any) {
+            alert(error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <ActionModal isVisible={isVisible} onClose={onClose}>
@@ -69,8 +118,18 @@ export const DepositModal = ({ isVisible, onClose }: { isVisible: boolean; onClo
                 />
             </View>
 
-            <TouchableOpacity style={styles.mainBtn}>
-                <Text style={styles.mainBtnText}>Deposit</Text>
+            <TouchableOpacity
+                style={[styles.mainBtn, loading && { opacity: 0.7 }]}
+                onPress={handleDeposit} // Connected the function
+                disabled={loading}
+            >
+                {loading ? (
+                    <ActivityIndicator color="white" /> // Show spinner when loading
+                ) : (
+                    <Text style={styles.mainBtnText}>
+                        Deposit {amount ? `UGX ${Number(amount).toLocaleString()}` : ''}
+                    </Text>
+                )}
             </TouchableOpacity>
         </ActionModal>
     );
@@ -85,9 +144,9 @@ const styles = StyleSheet.create({
         borderWidth: 1, borderColor: '#F97316', borderRadius: 12, paddingHorizontal: 15, height: 48, marginBottom: 15
     },
     input: { flex: 1, color: 'white', fontSize: 16 },
-    chipRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 15 },
-    chip: { backgroundColor: '#18181B', paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8 },
-    chipText: { color: '#94A3B8', fontSize: 13 },
+    chipRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 15, gap:8},
+    chip: { backgroundColor: 'rgba(249, 115, 22, 0.1)', paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8 },
+    chipText: { color: '#F97316', fontSize: 13, fontFamily: 'SpaceGrotesk-Bold' },
     providerRow: { flexDirection: 'row', gap: 10, marginBottom: 15 },
     pCard: { flex: 1, height: 70, backgroundColor: '#09090B', borderRadius: 12, borderWidth: 1, borderColor: '#27272A', justifyContent: 'center', alignItems: 'center' },
     activePCard: { borderColor: '#F97316', backgroundColor: '#111111' },

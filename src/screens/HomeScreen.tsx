@@ -19,9 +19,12 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [isBalanceVisible, setIsBalanceVisible] = useState(true);
   const [showDeposit, setShowDeposit] = useState(false);
+  const [balance, setBalance] = useState<number>(0);
+  const [isFetchingBalance, setIsFetchingBalance] = useState(true);
 
   useEffect(() => {
     getProfile();
+    fetchBalance();
   }, []);
 
   async function getProfile() {
@@ -44,6 +47,30 @@ export default function HomeScreen() {
       console.log('Fetch Error:', error);
     } finally {
       setLoading(false);
+    }
+  }
+  async function fetchBalance() {
+    try {
+      setIsFetchingBalance(true);
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (user) {
+        // We pull from the 'user_balances' VIEW we created earlier
+        const { data, error } = await supabase
+          .from('user_balances')
+          .select('total_balance')
+          .eq('profile_id', user.id)
+          .single();
+
+        if (error && error.code !== 'PGRST116') throw error; // PGRST116 means no rows found (new user)
+
+        // If data exists, set it. If not (new user), balance is 0.
+        setBalance(data?.total_balance || 0);
+      }
+    } catch (error: any) {
+      console.log('Balance Fetch Error:', error.message);
+    } finally {
+      setIsFetchingBalance(false);
     }
   }
   return (
@@ -69,7 +96,10 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
           <Text style={styles.cardAmount}>
-            {isBalanceVisible ? formatUGX(12450) : 'UGX ••••••'}
+            {isBalanceVisible
+              ? (isFetchingBalance ? '...' : formatUGX(balance))
+              : 'UGX ••••••'
+            }
           </Text>
         </GlassCard>
 
@@ -103,7 +133,10 @@ export default function HomeScreen() {
       </ScrollView>
       <DepositModal
         isVisible={showDeposit}
-        onClose={() => setShowDeposit(false)}
+        onClose={() => {
+          setShowDeposit(false);
+          fetchBalance();
+        }}
       />
     </SafeAreaView>
   );
