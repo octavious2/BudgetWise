@@ -4,7 +4,7 @@ import { ActionModal } from './ActionModal';
 import { Smartphone } from 'lucide-react-native';
 import { Theme } from '../theme/colors';
 
-const QUICK_AMOUNTS = [50000, 100000, 200000, 500000];
+const QUICK_AMOUNTS = [10000, 50000, 100000,];
 
 export const DepositModal = ({ isVisible, onClose }: { isVisible: boolean; onClose: () => void }) => {
     const [amount, setAmount] = useState('');
@@ -77,22 +77,22 @@ export const DepositModal = ({ isVisible, onClose }: { isVisible: boolean; onClo
 };
 
 const styles = StyleSheet.create({
-    title: { color: 'white', fontSize: 24, fontFamily: 'SpaceGrotesk-Bold', textAlign: 'center' },
-    subtitle: { color: '#94A3B8', fontSize: 14, textAlign: 'center', marginBottom: 30, marginTop: 8 },
-    label: { color: 'white', fontSize: 16, fontFamily: 'SpaceGrotesk-Bold', marginBottom: 12 },
+    title: { color: 'white', fontSize: 20, fontFamily: 'SpaceGrotesk-Bold', textAlign: 'center' },
+    subtitle: { color: '#94A3B8', fontSize: 14, textAlign: 'center', marginBottom: 15, marginTop: 8 },
+    label: { color: 'white', fontSize: 14, fontFamily: 'SpaceGrotesk-Bold', marginBottom: 12 },
     inputBox: {
         flexDirection: 'row', alignItems: 'center', backgroundColor: '#000',
-        borderWidth: 1, borderColor: '#F97316', borderRadius: 12, paddingHorizontal: 15, height: 55, marginBottom: 15
+        borderWidth: 1, borderColor: '#F97316', borderRadius: 12, paddingHorizontal: 15, height: 48, marginBottom: 15
     },
     input: { flex: 1, color: 'white', fontSize: 16 },
-    chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 25 },
-    chip: { backgroundColor: '#18181B', paddingVertical: 10, paddingHorizontal: 15, borderRadius: 12 },
+    chipRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 15 },
+    chip: { backgroundColor: '#18181B', paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8 },
     chipText: { color: '#94A3B8', fontSize: 13 },
-    providerRow: { flexDirection: 'row', gap: 12, marginBottom: 25 },
-    pCard: { flex: 1, height: 90, backgroundColor: '#09090B', borderRadius: 12, borderWidth: 1, borderColor: '#27272A', justifyContent: 'center', alignItems: 'center' },
+    providerRow: { flexDirection: 'row', gap: 10, marginBottom: 15 },
+    pCard: { flex: 1, height: 70, backgroundColor: '#09090B', borderRadius: 12, borderWidth: 1, borderColor: '#27272A', justifyContent: 'center', alignItems: 'center' },
     activePCard: { borderColor: '#F97316', backgroundColor: '#111111' },
     dot: { width: 20, height: 20, borderRadius: 10, marginBottom: 10 },
     pText: { color: 'white', fontSize: 13, textAlign: 'center', fontFamily: 'SpaceGrotesk-Bold' },
-    mainBtn: { backgroundColor: '#F97316', height: 55, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginTop: 10 },
+    mainBtn: { backgroundColor: '#F97316', height: 50, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginTop: 5 },
     mainBtnText: { color: 'white', fontSize: 18, fontFamily: 'SpaceGrotesk-Bold' },
 });

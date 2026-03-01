@@ -6,6 +6,7 @@ interface ActionModalProps {
     isVisible: boolean;
     onClose: () => void;
     children: React.ReactNode;
+    title?: string;
 }
 
 export const ActionModal = ({ isVisible, onClose, children }: ActionModalProps) => {
@@ -17,12 +18,19 @@ export const ActionModal = ({ isVisible, onClose, children }: ActionModalProps) 
             onRequestClose={onClose}
         >
             <Pressable style={styles.overlay} onPress={onClose}>
-                <View style={styles.modalContainer} onStartShouldSetResponder={() => true}>
-                    <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-                        <X color="white" size={24} />
-                    </TouchableOpacity>
+
+                <Pressable
+                    style={styles.modalContent}
+                    onStartShouldSetResponder={() => true} 
+                >
+                    <View style={styles.header}>
+                        <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                            <X color="#94a3b8" size={24} />
+                        </TouchableOpacity>
+                    </View>
+
                     {children}
-                </View>
+                </Pressable>
             </Pressable>
         </Modal>
     );
@@ -31,20 +39,30 @@ export const ActionModal = ({ isVisible, onClose, children }: ActionModalProps) 
 const styles = StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.85)',
-        justifyContent: 'flex-end',
+        backgroundColor: 'rgba(0, 0, 0, 0.7)', // Dimmed background
+        justifyContent: 'flex-end', // Pulls modal to the bottom
     },
-    modalContainer: {
-        backgroundColor: '#09090B', 
+    modalContent: {
+        backgroundColor: '#09090B', // Dark fintech background
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
-        padding: 24,
+        paddingHorizontal: 20,
+        paddingBottom: 40,
+        paddingTop: 10,
+        width: '100%',
+        maxHeight: '85%', // Prevents it from covering the very top of the screen
         borderWidth: 1,
-        borderColor: '#27272A',
-        minHeight: '60%',
+        borderColor: 'rgba(255,255,255,0.1)',
     },
-    closeButton: {
-        alignSelf: 'flex-end',
-        marginBottom: 10,
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        width: '100%',
+        paddingVertical: 10,
+    },
+    closeBtn: {
+        padding: 5,
+        backgroundColor: 'rgba(255,255,255,0.05)',
+        borderRadius: 20,
     },
 });
