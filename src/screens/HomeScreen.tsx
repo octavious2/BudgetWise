@@ -19,7 +19,12 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [isBalanceVisible, setIsBalanceVisible] = useState(true);
   const [showDeposit, setShowDeposit] = useState(false);
-  const [balance, setBalance] = useState<number>(0);
+  const [balances, setBalances] = useState({
+    total: 0,
+    budgeted: 0,
+    available: 0, // Total - Budgeted
+    locked: 0
+  });
   const [isFetchingBalance, setIsFetchingBalance] = useState(true);
 
   useEffect(() => {
@@ -50,28 +55,35 @@ export default function HomeScreen() {
     }
   }
   async function fetchBalance() {
-    try {
-      setIsFetchingBalance(true);
-      const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
-      if (user) {
-        // We pull from the 'user_balances' VIEW we created earlier
-        const { data, error } = await supabase
-          .from('user_balances')
-          .select('total_balance')
-          .eq('profile_id', user.id)
-          .single();
+    //Total Transactions
+    const { data: transData } = await supabase
+      .from('transactions')
+      .select('amount, type, status')
+      .eq('profile_id', user.id)
+      .eq('status', 'completed');
 
-        if (error && error.code !== 'PGRST116') throw error; // PGRST116 means no rows found (new user)
+    // Active Budgets 
+    const { data: budgetData } = await supabase
+      .from('budgets')
+      .select('allocated_amount')
+      .eq('profile_id', user.id);
 
-        // If data exists, set it. If not (new user), balance is 0.
-        setBalance(data?.total_balance || 0);
-      }
-    } catch (error: any) {
-      console.log('Balance Fetch Error:', error.message);
-    } finally {
-      setIsFetchingBalance(false);
-    }
+    // "Management" View
+    const totalIn = transData?.filter(t => t.type === 'deposit').reduce((s, t) => s + t.amount, 0) || 0;
+    const totalOut = transData?.filter(t => t.type === 'withdrawal').reduce((s, t) => s + t.amount, 0) || 0;
+    const totalBudgeted = budgetData?.reduce((s, b) => s + b.allocated_amount, 0) || 0;
+
+    const actualTotal = totalIn - totalOut;
+
+    setBalances({
+      total: actualTotal,
+      budgeted: totalBudgeted,
+      available: actualTotal - totalBudgeted, 
+      locked: 0 
+    });
   }
   return (
     <SafeAreaView style={styles.container}>
@@ -95,12 +107,35 @@ export default function HomeScreen() {
               )}
             </TouchableOpacity>
           </View>
-          <Text style={styles.cardAmount}>
-            {isBalanceVisible
-              ? (isFetchingBalance ? '...' : formatUGX(balance))
-              : 'UGX ••••••'
-            }
-          </Text>
+          <View style={styles.balanceContainer}>
+            {/* The "Safe-to-Spend" Hero Amount */}
+            <Text style={styles.balanceLabel}>Available to Spend</Text>
+            <Text style={styles.cardAmount}>
+              {isBalanceVisible
+                ? (isFetchingBalance ? '...' : formatUGX(balances.available))
+                : 'UGX ••••••'
+              }
+            </Text>
+
+            {/* The "Allocated" and "Locked" Breakdown */}
+            <View style={styles.statsRow}>
+              <View style={styles.statItem}>
+                <Text style={styles.statLabel}>Budgeted</Text>
+                <Text style={styles.statValue}>
+                  {isBalanceVisible ? formatUGX(balances.budgeted) : '••••'}
+                </Text>
+              </View>
+
+              <View style={styles.divider} />
+
+              <View style={styles.statItem}>
+                <Text style={styles.statLabel}>Total Balance</Text>
+                <Text style={styles.statValue}>
+                  {isBalanceVisible ? formatUGX(balances.total) : '••••'}
+                </Text>
+              </View>
+            </View>
+          </View>
         </GlassCard>
 
         <View style={styles.actionRow}>
@@ -166,12 +201,51 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 8,
   },
+  balanceContainer: {
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  balanceLabel: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 12,
+    fontFamily: 'SpaceGrotesk-Medium',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
   cardAmount: {
     color: Theme.colors.text,
+    fontSize: 32, 
     fontFamily: 'SpaceGrotesk-Bold',
-    fontSize: 32,
-    marginBottom: 12,
-    minWidth: 200,
+    marginVertical: 8,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 15,
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.1)',
+    width: '100%',
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statLabel: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 10,
+    fontFamily: 'SpaceGrotesk-Medium',
+    marginBottom: 4,
+  },
+  statValue: {
+    color: 'white',
+    fontSize: 14,
+    fontFamily: 'SpaceGrotesk-Bold',
+  },
+  divider: {
+    width: 1,
+    height: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
   },
   actionRow: {
     flexDirection: 'row',
