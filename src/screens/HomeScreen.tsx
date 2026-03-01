@@ -11,6 +11,7 @@ import { GlassCard } from '../components/GlassCard';
 import { ActionButton } from '../components/ActionButton';
 import { DepositModal } from '../components/DepositModal';
 import {ServiceIcon} from '../components/ServiceIcon';
+import { WithdrawModal } from '../components/WithdrawModal';
 import { formatUGX } from '../utils/currency';
 import { Theme } from '../theme/colors';
 
@@ -19,11 +20,11 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [isBalanceVisible, setIsBalanceVisible] = useState(true);
   const [showDeposit, setShowDeposit] = useState(false);
+  const [showWithdraw, setShowWithdraw] = useState(false);
   const [balances, setBalances] = useState({
     total: 0,
     budgeted: 0,
-    available: 0, // Total - Budgeted
-    locked: 0
+    available: 0,
   });
   const [isFetchingBalance, setIsFetchingBalance] = useState(true);
 
@@ -54,37 +55,42 @@ export default function HomeScreen() {
       setLoading(false);
     }
   }
-  async function fetchBalance() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+  const fetchBalance = async () => {
+    setIsFetchingBalance(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-    //Total Transactions
-    const { data: transData } = await supabase
-      .from('transactions')
-      .select('amount, type, status')
-      .eq('profile_id', user.id)
-      .eq('status', 'completed');
+      // Fetch transactions (Completed only)
+      const { data: transactions } = await supabase
+        .from('transactions')
+        .select('amount, type')
+        .eq('profile_id', user.id)
+        .eq('status', 'completed');
 
-    // Active Budgets 
-    const { data: budgetData } = await supabase
-      .from('budgets')
-      .select('allocated_amount')
-      .eq('profile_id', user.id);
+      // Fetch active budgets (Total amount currently "locked" in categories)
+      const { data: budgets } = await supabase
+        .from('budgets')
+        .select('allocated_amount')
+        .eq('profile_id', user.id);
 
-    // "Management" View
-    const totalIn = transData?.filter(t => t.type === 'deposit').reduce((s, t) => s + t.amount, 0) || 0;
-    const totalOut = transData?.filter(t => t.type === 'withdrawal').reduce((s, t) => s + t.amount, 0) || 0;
-    const totalBudgeted = budgetData?.reduce((s, b) => s + b.allocated_amount, 0) || 0;
+      const totalIn = transactions?.filter(t => t.type === 'deposit').reduce((sum, t) => sum + Number(t.amount), 0) || 0;
+      const totalOut = transactions?.filter(t => t.type === 'withdrawal').reduce((sum, t) => sum + Number(t.amount), 0) || 0;
+      const totalBudgeted = budgets?.reduce((sum, b) => sum + Number(b.allocated_amount), 0) || 0;
 
-    const actualTotal = totalIn - totalOut;
+      const currentTotal = totalIn - totalOut;
 
-    setBalances({
-      total: actualTotal,
-      budgeted: totalBudgeted,
-      available: actualTotal - totalBudgeted, 
-      locked: 0 
-    });
-  }
+      setBalances({
+        total: currentTotal,
+        budgeted: totalBudgeted,
+        available: currentTotal - totalBudgeted 
+      });
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsFetchingBalance(false);
+    }
+  };
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -147,7 +153,11 @@ export default function HomeScreen() {
             }}
           />
           <ActionButton icon={<Send size={24} color="white" />} label="Send" />
-          <ActionButton icon={<Upload size={24} color="white" />} label="Withdraw" />
+          <ActionButton
+            icon={<Upload color="white" />}
+            label="Withdraw"
+            onPress={() => setShowWithdraw(true)} 
+          />
         </View>
 
         <View style={styles.sectionHeader}>
@@ -172,6 +182,12 @@ export default function HomeScreen() {
           setShowDeposit(false);
           fetchBalance();
         }}
+      />
+      <WithdrawModal
+        isVisible={showWithdraw}
+        onClose={() => setShowWithdraw(false)}
+        availableBalance={balances.available} 
+        refreshData={fetchBalance}           
       />
     </SafeAreaView>
   );
