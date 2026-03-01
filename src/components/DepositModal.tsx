@@ -11,12 +11,18 @@ export const DepositModal = ({ isVisible, onClose }: { isVisible: boolean; onClo
     const [amount, setAmount] = useState('');
     const [loading, setLoading] = useState(false);
     const [provider, setProvider] = useState<'mtn' | 'airtel'>('mtn');
+    const [phone, setPhone] = useState('');
 
     const handleDeposit = async () => {
         // 1. Basic Validation
         const numAmount = parseFloat(amount);
-        if (isNaN(numAmount) || numAmount <= 500) {
-            alert("Please enter a valid amount (Min: 500 UGX)");
+
+        if (isNaN(numAmount) || numAmount <= 5000) {
+            alert("Please enter a valid amount (Min: 5000 UGX)");
+            return;
+        }
+        if (phone.length < 10) {
+            alert("Please enter a valid Mobile Money number (e.g., 0770123456)");
             return;
         }
 
@@ -37,9 +43,10 @@ export const DepositModal = ({ isVisible, onClose }: { isVisible: boolean; onClo
                         amount: numAmount,
                         type: 'deposit',
                         provider: provider,
+                        phone_number: phone,
                         category: 'Income',
-                        description: 'Mobile Money Deposit',
-                        status: 'completed' // In a real app, this would be 'pending' until callback
+                        description: `Mobile Money Deposit via ${provider.toUpperCase()}`,
+                        status: 'completed'
                     }
                 ]);
 
@@ -47,10 +54,9 @@ export const DepositModal = ({ isVisible, onClose }: { isVisible: boolean; onClo
 
             // 4. Success!
             console.log("Deposit Successful!");
-            setAmount(''); // Clear input
-            onClose();     // Close modal
-
-            // We will add a "Refresh Balance" trigger here in the next step
+            setAmount('');
+            setPhone('');
+            onClose();    
 
         } catch (error: any) {
             alert(error.message);
@@ -115,6 +121,9 @@ export const DepositModal = ({ isVisible, onClose }: { isVisible: boolean; onClo
                     placeholder="0770 123 456"
                     placeholderTextColor="#4B5563"
                     keyboardType="phone-pad"
+                    value={phone}                
+                    onChangeText={setPhone}     
+                    maxLength={10}
                 />
             </View>
 
