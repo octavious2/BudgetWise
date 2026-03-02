@@ -1,16 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, InteractionManager } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import {
-  Send, Download, Upload, CreditCard, Eye, EyeOff, PhoneCall, 
+  Send, Download, Upload, CreditCard, Eye, EyeOff, PhoneCall,
   Wifi, Zap, Droplets, ChevronRight, Tv, LayoutGrid
 } from 'lucide-react-native';
 import { HomeHeader } from '../components/HomeHeader';
 import { GlassCard } from '../components/GlassCard';
 import { ActionButton } from '../components/ActionButton';
 import { DepositModal } from '../components/DepositModal';
-import {ServiceIcon} from '../components/ServiceIcon';
+import { ServiceIcon } from '../components/ServiceIcon';
 import { WithdrawModal } from '../components/WithdrawModal';
 import { formatUGX } from '../utils/currency';
 import { Theme } from '../theme/colors';
@@ -29,46 +29,89 @@ export default function HomeScreen() {
   const [isFetchingBalance, setIsFetchingBalance] = useState(true);
 
   useEffect(() => {
-    getProfile();
-    fetchBalance();
+    const initializeHome = async () => {
+      setLoading(true);
+      setIsFetchingBalance(true);
+
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        // 🔥 PARALLEL FETCHING: Hits Supabase 3 times at once instead of one-by-one
+        const [profileRes, transRes, budgetRes] = await Promise.all([
+          supabase.from('profiles').select('full_name').eq('id', user.id).single(),
+          supabase.from('transactions').select('amount, type').eq('profile_id', user.id).eq('status', 'completed'),
+          supabase.from('budgets').select('allocated_amount').eq('profile_id', user.id)
+        ]);
+
+        if (profileRes.data) setDisplayName(profileRes.data.full_name);
+
+        const totalIn = transRes.data?.filter(t => t.type === 'deposit').reduce((s, t) => s + Number(t.amount), 0) || 0;
+        const totalOut = transRes.data?.filter(t => t.type === 'withdrawal').reduce((s, t) => s + Number(t.amount), 0) || 0;
+        const totalBudgeted = budgetRes.data?.reduce((s, b) => s + Number(b.allocated_amount), 0) || 0;
+
+        const currentTotal = totalIn - totalOut;
+
+        setBalances({
+          total: currentTotal,
+          budgeted: totalBudgeted,
+          available: currentTotal - totalBudgeted
+        });
+
+      } catch (error) {
+        console.error('Initialization Error:', error);
+      } finally {
+        setLoading(false);
+        setIsFetchingBalance(false);
+      }
+    };
+
+    initializeHome();
   }, []);
+
+  const handleOpenDeposit = () => {
+    setShowDeposit(true);
+    InteractionManager.runAfterInteractions(() => {
+    });
+  };
+
+  const handleOpenWithdraw = () => {
+    setShowWithdraw(true);
+    InteractionManager.runAfterInteractions(() => {
+    });
+  };
 
   async function getProfile() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      console.log('Current User ID:', user?.id);
 
       if (user) {
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from('profiles')
           .select('full_name')
           .eq('id', user.id)
           .single();
 
-        console.log('Database Result:', data);
-
         if (data) setDisplayName(data.full_name);
       }
     } catch (error: any) {
-      console.log('Fetch Error:', error);
     } finally {
       setLoading(false);
     }
   }
+
   const fetchBalance = async () => {
     setIsFetchingBalance(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Fetch transactions (Completed only)
       const { data: transactions } = await supabase
         .from('transactions')
         .select('amount, type')
         .eq('profile_id', user.id)
         .eq('status', 'completed');
 
-      // Fetch active budgets (Total amount currently "locked" in categories)
       const { data: budgets } = await supabase
         .from('budgets')
         .select('allocated_amount')
@@ -83,7 +126,7 @@ export default function HomeScreen() {
       setBalances({
         total: currentTotal,
         budgeted: totalBudgeted,
-        available: currentTotal - totalBudgeted 
+        available: currentTotal - totalBudgeted
       });
     } catch (error) {
       console.error(error);
@@ -91,6 +134,7 @@ export default function HomeScreen() {
       setIsFetchingBalance(false);
     }
   };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -100,12 +144,7 @@ export default function HomeScreen() {
         <GlassCard style={styles.mainCard}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>Total Balance</Text>
-
-            {/* 2. Toggle Button */}
-            <TouchableOpacity
-              onPress={() => setIsBalanceVisible(!isBalanceVisible)}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
+            <TouchableOpacity onPress={() => setIsBalanceVisible(!isBalanceVisible)}>
               {isBalanceVisible ? (
                 <Eye size={20} color={Theme.colors.textSecondary} />
               ) : (
@@ -113,8 +152,8 @@ export default function HomeScreen() {
               )}
             </TouchableOpacity>
           </View>
+
           <View style={styles.balanceContainer}>
-            {/* The "Safe-to-Spend" Hero Amount */}
             <Text style={styles.balanceLabel}>Available to Spend</Text>
             <Text style={styles.cardAmount}>
               {isBalanceVisible
@@ -123,7 +162,6 @@ export default function HomeScreen() {
               }
             </Text>
 
-            {/* The "Allocated" and "Locked" Breakdown */}
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
                 <Text style={styles.statLabel}>Budgeted</Text>
@@ -131,9 +169,7 @@ export default function HomeScreen() {
                   {isBalanceVisible ? formatUGX(balances.budgeted) : '••••'}
                 </Text>
               </View>
-
               <View style={styles.divider} />
-
               <View style={styles.statItem}>
                 <Text style={styles.statLabel}>Total Balance</Text>
                 <Text style={styles.statValue}>
@@ -148,25 +184,20 @@ export default function HomeScreen() {
           <ActionButton
             icon={<Download size={24} color="white" />}
             label="Deposit"
-            onPress={() => {
-              setShowDeposit(true);
-            }}
+            onPress={handleOpenDeposit} 
           />
           <ActionButton icon={<Send size={24} color="white" />} label="Send" />
           <ActionButton
             icon={<Upload color="white" />}
             label="Withdraw"
-            onPress={() => setShowWithdraw(true)} 
+            onPress={handleOpenWithdraw} 
           />
         </View>
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Quick Services</Text>
-          <TouchableOpacity>
-            <Text style={styles.seeAllText}>See All</Text>
-          </TouchableOpacity>
+          <TouchableOpacity><Text style={styles.seeAllText}>See All</Text></TouchableOpacity>
         </View>
-
         <View style={styles.servicesGrid}>
           <ServiceIcon icon={<PhoneCall size={22} color={Theme.colors.primary} />} label="Airtime" />
           <ServiceIcon icon={<Wifi size={22} color="#3b82f6" />} label="Data" />
@@ -176,6 +207,7 @@ export default function HomeScreen() {
           <ServiceIcon icon={<LayoutGrid size={22} color="#94a3b8" />} label="More" />
         </View>
       </ScrollView>
+
       <DepositModal
         isVisible={showDeposit}
         onClose={() => {
@@ -186,12 +218,12 @@ export default function HomeScreen() {
       <WithdrawModal
         isVisible={showWithdraw}
         onClose={() => setShowWithdraw(false)}
-        availableBalance={balances.available} 
-        refreshData={fetchBalance}           
+        availableBalance={balances.available}
+        refreshData={fetchBalance}
       />
     </SafeAreaView>
   );
-} 
+}
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Theme.colors.background },
@@ -230,7 +262,7 @@ const styles = StyleSheet.create({
   },
   cardAmount: {
     color: Theme.colors.text,
-    fontSize: 32, 
+    fontSize: 32,
     fontFamily: 'SpaceGrotesk-Bold',
     marginVertical: 8,
   },
