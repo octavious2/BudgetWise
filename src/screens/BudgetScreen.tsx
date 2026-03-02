@@ -7,14 +7,23 @@ import { Plus, PieChart } from 'lucide-react-native';
 import { formatUGX } from '../utils/currency';
 import { BudgetModal } from '../components/BudgetModal';
 
-// Helper to map category IDs to Names
+// 1. ADD THIS INTERFACE: Fixes the 'Budget[]' and 'item' errors
+interface Budget {
+  id: string;
+  category_id: number;
+  allocated_amount: number;
+  spent_amount: number;
+  profile_id: string;
+}
+
 const getCategoryName = (id: number) => {
   const names: Record<number, string> = { 1: 'Tuition', 2: 'Rent', 3: 'Food', 4: 'Transport', 5: 'Personal' };
   return names[id] || 'Other';
 };
 
 export default function BudgetScreen() {
-  const [budgets, setBudgets] = useState([]);
+  // Use the interface here
+  const [budgets, setBudgets] = useState<Budget[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [availableBalance, setAvailableBalance] = useState(0);
@@ -22,30 +31,29 @@ export default function BudgetScreen() {
   const fetchData = async () => {
     setRefreshing(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData.user;
+
+      // 2. USER CHECK: Stops 'user is possibly null' errors
       if (!user) return;
 
-      // 1. Fetch Budgets
-      const { data: budgetData } = await supabase
-        .from('budgets')
-        .select('*')
-        .eq('profile_id', user.id);
+      const [budgetRes, transRes] = await Promise.all([
+        supabase.from('budgets').select('*').eq('profile_id', user.id),
+        supabase.from('transactions').select('amount, type').eq('profile_id', user.id).eq('status', 'completed')
+      ]);
 
-      // 2. Fetch Transactions to calculate "Available" balance for the Modal
-      const { data: trans } = await supabase
-        .from('transactions')
-        .select('amount, type')
-        .eq('profile_id', user.id)
-        .eq('status', 'completed');
+      const budgetData = budgetRes.data as Budget[] || [];
+      const trans = transRes.data || [];
 
-      const totalIn = trans?.filter(t => t.type === 'deposit').reduce((sum, t) => sum + Number(t.amount), 0) || 0;
-      const totalOut = trans?.filter(t => t.type === 'withdrawal').reduce((sum, t) => sum + Number(t.amount), 0) || 0;
-      const totalBudgeted = budgetData?.reduce((sum, b) => sum + Number(b.allocated_amount), 0) || 0;
+      const totalIn = trans.filter(t => t.type === 'deposit').reduce((sum, t) => sum + Number(t.amount), 0);
+      const totalOut = trans.filter(t => t.type === 'withdrawal').reduce((sum, t) => sum + Number(t.amount), 0);
+      const totalBudgeted = budgetData.reduce((sum, b) => sum + Number(b.allocated_amount), 0);
 
-      setBudgets(budgetData || []);
+      setBudgets(budgetData);
+      // Available to allocate = Actual Wallet Balance - Money already promised to other categories
       setAvailableBalance(totalIn - totalOut - totalBudgeted);
     } catch (error) {
-      console.error(error);
+      console.error('Fetch Error:', error);
     } finally {
       setRefreshing(false);
     }
@@ -55,11 +63,9 @@ export default function BudgetScreen() {
 
   const handleOpenModal = () => {
     setShowModal(true);
-    InteractionManager.runAfterInteractions(() => {
-    });
   };
 
-  const renderBudgetItem = ({ item }: any) => {
+  const renderBudgetItem = ({ item }: { item: Budget }) => {
     const allocated = Number(item.allocated_amount) || 1;
     const spent = Number(item.spent_amount) || 0;
     const progress = spent / allocated;
@@ -94,7 +100,7 @@ export default function BudgetScreen() {
       <View style={styles.header}>
         <View>
           <Text style={styles.title}>My Budgets</Text>
-          <Text style={styles.subtitle}>Available to Allocate: {formatUGX(availableBalance)}</Text>
+          <Text style={styles.subtitle}>Unallocated: {formatUGX(availableBalance)}</Text>
         </View>
         <TouchableOpacity style={styles.addButton} onPress={handleOpenModal}>
           <Plus color="white" size={24} />
@@ -103,7 +109,7 @@ export default function BudgetScreen() {
 
       <FlatList
         data={budgets}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => item.id} // 3. UUID is a string, no need for .toString()
         renderItem={renderBudgetItem}
         contentContainerStyle={{ paddingBottom: 100 }}
         refreshControl={
@@ -129,6 +135,8 @@ export default function BudgetScreen() {
     </SafeAreaView>
   );
 }
+
+// ... styles remain the same
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Theme.colors.background, paddingHorizontal: 20 },

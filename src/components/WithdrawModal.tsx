@@ -5,12 +5,13 @@ import {
 } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { ActionModal } from './ActionModal';
-import { Smartphone, PieChart, AlertCircle } from 'lucide-react-native';
+import { Smartphone } from 'lucide-react-native';
+import { formatUGX } from '../utils/currency'; // Make sure this helper exists
 
 interface WithdrawModalProps {
     isVisible: boolean;
     onClose: () => void;
-    availableBalance: number; 
+    availableBalance: number; // This is the "Unallocated" money
     refreshData: () => void;
 }
 
@@ -28,88 +29,78 @@ export const WithdrawModal = ({ isVisible, onClose, availableBalance, refreshDat
     const [selectedCatId, setSelectedCatId] = useState<number | null>(null);
     const [loading, setLoading] = useState(false);
     const [provider, setProvider] = useState<'mtn' | 'airtel'>('mtn');
+    const [userBudgets, setUserBudgets] = useState<any[]>([]);
+
+    // Fetch budgets whenever modal opens to know category limits
+    useEffect(() => {
+        if (isVisible) fetchCategoryLimits();
+    }, [isVisible]);
+
+    const fetchCategoryLimits = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data } = await supabase.from('budgets').select('*').eq('profile_id', user.id);
+        setUserBudgets(data || []);
+    };
 
     const handleWithdraw = async () => {
-        const numAmount = parseFloat(amount);
+        const withdrawAmount = parseFloat(amount);
 
-        // 1. Fundamental Checks
-        if (isNaN(numAmount) || numAmount < 500) {
-            Alert.alert("Invalid Amount", "Minimum withdrawal is 500 UGX");
-            return;
-        }
-        if (!selectedCatId) {
-            Alert.alert("Category Required", "Please select a category to track this expense.");
-            return;
-        }
-        if (phone.length < 10) {
-            Alert.alert("Invalid Phone", "Please enter a valid mobile money number.");
-            return;
-        }
+        // 1. Logic Check: Find the specific budget for the selected category
+        const currentCatBudget = userBudgets.find(b => b.category_id === selectedCatId);
+        const budgetRemaining = currentCatBudget
+            ? (Number(currentCatBudget.allocated_amount) - Number(currentCatBudget.spent_amount))
+            : 0;
 
-        // 2. Liquidity Check (Wallet Level)
-        if (numAmount > availableBalance) {
-            Alert.alert(
-                "Insufficient Available Funds",
-                "You have the total balance, but most of it is allocated to other budgets. Unallocate funds first."
+        // 2. The Smart Limit: Unallocated Money + What's left in THIS budget
+        const totalLimitForCategory = availableBalance + budgetRemaining;
+
+        if (!selectedCatId) return Alert.alert("Selection Required", "Please select a category.");
+        if (isNaN(withdrawAmount) || withdrawAmount <= 0) return Alert.alert("Invalid Amount", "Enter a valid amount.");
+
+        if (withdrawAmount > totalLimitForCategory) {
+            return Alert.alert(
+                "Insufficient Funds",
+                `You only have ${formatUGX(totalLimitForCategory)} available for this category. (Unallocated: ${formatUGX(availableBalance)} + Budget: ${formatUGX(budgetRemaining)})`
             );
-            return;
         }
 
         setLoading(true);
-
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error("User session expired");
+            const { data: userData } = await supabase.auth.getUser();
+            const user = userData.user;
+            if (!user) throw new Error("User session not found.");
 
-            // 3. SMART LOGIC: Check Budget Limit for this Category
-            const { data: budget } = await supabase
-                .from('budgets')
-                .select('allocated_amount, spent_amount')
-                .eq('profile_id', user.id)
-                .eq('category_id', selectedCatId)
-                .single();
+            // 1. Log the Transaction
+            const { error: txError } = await supabase.from('transactions').insert({
+                profile_id: user.id,
+                amount: withdrawAmount,
+                type: 'withdrawal',
+                category_id: selectedCatId,
+                status: 'completed'
+            });
+            if (txError) throw txError;
 
-            // If a budget exists, enforce the limit
-            if (budget && (Number(budget.spent_amount) + numAmount > Number(budget.allocated_amount))) {
-                // Record as BLOCKED for the user's history
-                await supabase.from('transactions').insert([{
-                    profile_id: user.id,
-                    amount: numAmount,
-                    type: 'withdrawal',
-                    category_id: selectedCatId,
-                    status: 'blocked',
-                    description: 'Blocked: Budget Exceeded'
-                }]);
+            // 2. Update the Budget "Spent" amount
+            if (currentCatBudget) {
+                const { error: budgetUpdateError } = await supabase
+                    .from('budgets')
+                    .update({
+                        spent_amount: Number(currentCatBudget.spent_amount) + withdrawAmount,
+                        updated_at: new Date()
+                    })
+                    .eq('profile_id', user.id)
+                    .eq('category_id', selectedCatId);
 
-                Alert.alert("🚫 Transaction Blocked", "This exceeds your set budget for this category. Stay disciplined!");
-                setLoading(false);
-                return;
+                if (budgetUpdateError) throw budgetUpdateError;
             }
 
-            // 4. Success Path: Record the Transaction
-            const { error } = await supabase.from('transactions').insert([
-                {
-                    profile_id: user.id,
-                    amount: numAmount,
-                    type: 'withdrawal',
-                    provider: provider,
-                    phone_number: phone,
-                    category_id: selectedCatId,
-                    description: `Withdrawal for ${CATEGORIES.find(c => c.id === selectedCatId)?.name}`,
-                    status: 'completed'
-                }
-            ]);
-
-            if (error) throw error;
-
-            // 5. Success!
-            Alert.alert("Success", "Withdrawal processed and logged.");
+            Alert.alert("Success", `UGX ${withdrawAmount.toLocaleString()} withdrawn.`);
             setAmount('');
             setPhone('');
             setSelectedCatId(null);
             refreshData();
             onClose();
-
         } catch (error: any) {
             Alert.alert("Error", error.message);
         } finally {
@@ -120,9 +111,14 @@ export const WithdrawModal = ({ isVisible, onClose, availableBalance, refreshDat
     return (
         <ActionModal isVisible={isVisible} onClose={onClose}>
             <Text style={styles.title}>Withdraw / Pay</Text>
-            <Text style={styles.subtitle}>Safe to spend: UGX {availableBalance.toLocaleString()}</Text>
+            {/* Show dynamic limit based on selection */}
+            <Text style={styles.subtitle}>
+                {selectedCatId
+                    ? `Available for ${CATEGORIES.find(c => c.id === selectedCatId)?.name}: ${formatUGX(availableBalance + (userBudgets.find(b => b.category_id === selectedCatId) ? (Number(userBudgets.find(b => b.category_id === selectedCatId).allocated_amount) - Number(userBudgets.find(b => b.category_id === selectedCatId).spent_amount)) : 0))}`
+                    : `Unallocated Balance: ${formatUGX(availableBalance)}`
+                }
+            </Text>
 
-            {/* Amount Input */}
             <Text style={styles.label}>Amount (UGX)</Text>
             <View style={styles.inputBox}>
                 <TextInput
@@ -135,8 +131,7 @@ export const WithdrawModal = ({ isVisible, onClose, availableBalance, refreshDat
                 />
             </View>
 
-            {/* Category Selection */}
-            <Text style={styles.label}>Category (Budget Tracking)</Text>
+            <Text style={styles.label}>Select Category to Spend From</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catRow}>
                 {CATEGORIES.map((cat) => (
                     <TouchableOpacity
@@ -154,7 +149,6 @@ export const WithdrawModal = ({ isVisible, onClose, availableBalance, refreshDat
                 ))}
             </ScrollView>
 
-            {/* Recipient Phone */}
             <Text style={styles.label}>Recipient Number</Text>
             <View style={styles.inputBox}>
                 <Smartphone size={18} color="#4B5563" style={{ marginRight: 10 }} />
@@ -169,30 +163,18 @@ export const WithdrawModal = ({ isVisible, onClose, availableBalance, refreshDat
                 />
             </View>
 
-            {/* Provider Selection */}
             <View style={styles.providerRow}>
-                <TouchableOpacity
-                    style={[styles.pCard, provider === 'mtn' && styles.activePCard]}
-                    onPress={() => setProvider('mtn')}
-                >
+                <TouchableOpacity style={[styles.pCard, provider === 'mtn' && styles.activePCard]} onPress={() => setProvider('mtn')}>
                     <View style={[styles.dot, { backgroundColor: '#FACC15' }]} />
                     <Text style={styles.pText}>MTN</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.pCard, provider === 'airtel' && styles.activePCard]}
-                    onPress={() => setProvider('airtel')}
-                >
+                <TouchableOpacity style={[styles.pCard, provider === 'airtel' && styles.activePCard]} onPress={() => setProvider('airtel')}>
                     <View style={[styles.dot, { backgroundColor: '#EF4444' }]} />
                     <Text style={styles.pText}>Airtel</Text>
                 </TouchableOpacity>
             </View>
 
-            {/* Action Button */}
-            <TouchableOpacity
-                style={[styles.mainBtn, loading && { opacity: 0.7 }]}
-                onPress={handleWithdraw}
-                disabled={loading}
-            >
+            <TouchableOpacity style={styles.mainBtn} onPress={handleWithdraw} disabled={loading}>
                 {loading ? <ActivityIndicator color="white" /> : <Text style={styles.mainBtnText}>Confirm Withdrawal</Text>}
             </TouchableOpacity>
         </ActionModal>
@@ -201,11 +183,11 @@ export const WithdrawModal = ({ isVisible, onClose, availableBalance, refreshDat
 
 const styles = StyleSheet.create({
     title: { color: 'white', fontSize: 20, fontFamily: 'SpaceGrotesk-Bold', textAlign: 'center' },
-    subtitle: { color: '#94A3B8', fontSize: 13, textAlign: 'center', marginBottom: 20, marginTop: 4 },
-    label: { color: 'white', fontSize: 15, fontFamily: 'SpaceGrotesk-Bold', marginBottom: 5 },
+    subtitle: { color: '#F97316', fontSize: 13, textAlign: 'center', marginBottom: 20, marginTop: 4, fontWeight: 'bold' },
+    label: { color: 'white', fontSize: 14, fontFamily: 'SpaceGrotesk-Bold', marginBottom: 8 },
     inputBox: {
         flexDirection: 'row', alignItems: 'center', backgroundColor: '#000',
-        borderWidth: 1, borderColor: '#27272A', borderRadius: 12, paddingHorizontal: 10, height: 48, marginBottom: 10
+        borderWidth: 1, borderColor: '#27272A', borderRadius: 12, paddingHorizontal: 10, height: 48, marginBottom: 15
     },
     input: { flex: 1, color: 'white', fontSize: 15, fontFamily: 'SpaceGrotesk-Medium' },
     catRow: { flexDirection: 'row', marginBottom: 20 },
