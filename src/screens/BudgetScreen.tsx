@@ -45,13 +45,19 @@ export default function BudgetScreen() {
       const budgetData = budgetRes.data as Budget[] || [];
       const trans = transRes.data || [];
 
+      // Calculate your current cash on hand
       const totalIn = trans.filter(t => t.type === 'deposit').reduce((sum, t) => sum + Number(t.amount), 0);
       const totalOut = trans.filter(t => t.type === 'withdrawal').reduce((sum, t) => sum + Number(t.amount), 0);
-      const totalBudgeted = budgetData.reduce((sum, b) => sum + Number(b.allocated_amount), 0);
+      const currentTotalCash = totalIn - totalOut;
+
+      // Calculate only what is LEFT to be spent in the budgets
+      const totalRemainingBudget = budgetData.reduce((sum, b) => {
+        const remaining = Number(b.allocated_amount) - Number(b.spent_amount);
+        return sum + (remaining > 0 ? remaining : 0);
+      }, 0);
 
       setBudgets(budgetData);
-      // Available to allocate = Actual Wallet Balance - Money already promised to other categories
-      setAvailableBalance(totalIn - totalOut - totalBudgeted);
+      setAvailableBalance(currentTotalCash - totalRemainingBudget);
     } catch (error) {
       console.error('Fetch Error:', error);
     } finally {
@@ -136,7 +142,6 @@ export default function BudgetScreen() {
   );
 }
 
-// ... styles remain the same
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Theme.colors.background, paddingHorizontal: 20 },

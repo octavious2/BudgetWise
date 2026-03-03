@@ -6,12 +6,13 @@ import {
 import { supabase } from '../lib/supabase';
 import { ActionModal } from './ActionModal';
 import { Smartphone } from 'lucide-react-native';
-import { formatUGX } from '../utils/currency'; // Make sure this helper exists
+import { formatUGX } from '../utils/currency';
+import { Theme } from '../theme/colors';
 
 interface WithdrawModalProps {
     isVisible: boolean;
     onClose: () => void;
-    availableBalance: number; // This is the "Unallocated" money
+    availableBalance: number; // This is the "Savings/Unallocated" money from HomeScreen
     refreshData: () => void;
 }
 
@@ -31,7 +32,18 @@ export const WithdrawModal = ({ isVisible, onClose, availableBalance, refreshDat
     const [provider, setProvider] = useState<'mtn' | 'airtel'>('mtn');
     const [userBudgets, setUserBudgets] = useState<any[]>([]);
 
-    // Fetch budgets whenever modal opens to know category limits
+    const currentCatBudget = userBudgets.find(b => b.category_id === selectedCatId);
+    const budgetAllocated = Number(currentCatBudget?.allocated_amount) || 0;
+    const budgetSpent = Number(currentCatBudget?.spent_amount) || 0;
+    const budgetRemaining = Math.max(0, budgetAllocated - budgetSpent);
+
+    // This defines what the user is ALLOWED to withdraw
+    // If they have a budget, they can only spend what's left in it.
+    // If they haven't budgeted for this category, they use their "Unallocated Savings".
+    const displayLimit = (selectedCatId && budgetAllocated > 0)
+        ? budgetRemaining
+        : availableBalance;
+
     useEffect(() => {
         if (isVisible) fetchCategoryLimits();
     }, [isVisible]);
@@ -39,29 +51,23 @@ export const WithdrawModal = ({ isVisible, onClose, availableBalance, refreshDat
     const fetchCategoryLimits = async () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-        const { data } = await supabase.from('budgets').select('*').eq('profile_id', user.id);
+        const { data } = await supabase
+            .from('budgets')
+            .select('*')
+            .eq('profile_id', user.id);
         setUserBudgets(data || []);
     };
 
     const handleWithdraw = async () => {
         const withdrawAmount = parseFloat(amount);
 
-        // 1. Logic Check: Find the specific budget for the selected category
-        const currentCatBudget = userBudgets.find(b => b.category_id === selectedCatId);
-        const budgetRemaining = currentCatBudget
-            ? (Number(currentCatBudget.allocated_amount) - Number(currentCatBudget.spent_amount))
-            : 0;
-
-        // 2. The Smart Limit: Unallocated Money + What's left in THIS budget
-        const totalLimitForCategory = availableBalance + budgetRemaining;
-
         if (!selectedCatId) return Alert.alert("Selection Required", "Please select a category.");
         if (isNaN(withdrawAmount) || withdrawAmount <= 0) return Alert.alert("Invalid Amount", "Enter a valid amount.");
 
-        if (withdrawAmount > totalLimitForCategory) {
+        if (withdrawAmount > displayLimit) {
             return Alert.alert(
-                "Insufficient Funds",
-                `You only have ${formatUGX(totalLimitForCategory)} available for this category. (Unallocated: ${formatUGX(availableBalance)} + Budget: ${formatUGX(budgetRemaining)})`
+                "Limit Exceeded",
+                `You only have ${formatUGX(displayLimit)} available for this selection. If you need more, please adjust your budget first.`
             );
         }
 
@@ -71,7 +77,6 @@ export const WithdrawModal = ({ isVisible, onClose, availableBalance, refreshDat
             const user = userData.user;
             if (!user) throw new Error("User session not found.");
 
-            // 1. Log the Transaction
             const { error: txError } = await supabase.from('transactions').insert({
                 profile_id: user.id,
                 amount: withdrawAmount,
@@ -81,12 +86,12 @@ export const WithdrawModal = ({ isVisible, onClose, availableBalance, refreshDat
             });
             if (txError) throw txError;
 
-            // 2. Update the Budget "Spent" amount
+            // 4. Update the specific Budget's spent_amount
             if (currentCatBudget) {
                 const { error: budgetUpdateError } = await supabase
                     .from('budgets')
                     .update({
-                        spent_amount: Number(currentCatBudget.spent_amount) + withdrawAmount,
+                        spent_amount: budgetSpent + withdrawAmount,
                         updated_at: new Date()
                     })
                     .eq('profile_id', user.id)
@@ -95,14 +100,17 @@ export const WithdrawModal = ({ isVisible, onClose, availableBalance, refreshDat
                 if (budgetUpdateError) throw budgetUpdateError;
             }
 
-            Alert.alert("Success", `UGX ${withdrawAmount.toLocaleString()} withdrawn.`);
+            Alert.alert("Success", `UGX ${withdrawAmount.toLocaleString()} withdrawn from ${CATEGORIES.find(c => c.id === selectedCatId)?.name}.`);
+
+            // Cleanup
             setAmount('');
             setPhone('');
             setSelectedCatId(null);
-            refreshData();
+            refreshData(); // Updates the Home Screen balances
             onClose();
         } catch (error: any) {
-            Alert.alert("Error", error.message);
+            console.error(error);
+            Alert.alert("Withdrawal Failed", error.message);
         } finally {
             setLoading(false);
         }
@@ -111,11 +119,10 @@ export const WithdrawModal = ({ isVisible, onClose, availableBalance, refreshDat
     return (
         <ActionModal isVisible={isVisible} onClose={onClose}>
             <Text style={styles.title}>Withdraw / Pay</Text>
-            {/* Show dynamic limit based on selection */}
             <Text style={styles.subtitle}>
                 {selectedCatId
-                    ? `Available for ${CATEGORIES.find(c => c.id === selectedCatId)?.name}: ${formatUGX(availableBalance + (userBudgets.find(b => b.category_id === selectedCatId) ? (Number(userBudgets.find(b => b.category_id === selectedCatId).allocated_amount) - Number(userBudgets.find(b => b.category_id === selectedCatId).spent_amount)) : 0))}`
-                    : `Unallocated Balance: ${formatUGX(availableBalance)}`
+                    ? `${CATEGORIES.find(c => c.id === selectedCatId)?.name} Limit: ${formatUGX(displayLimit)}`
+                    : `Unallocated Savings: ${formatUGX(availableBalance)}`
                 }
             </Text>
 
@@ -131,7 +138,7 @@ export const WithdrawModal = ({ isVisible, onClose, availableBalance, refreshDat
                 />
             </View>
 
-            <Text style={styles.label}>Select Category to Spend From</Text>
+            <Text style={styles.label}>Category (Budget Source)</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catRow}>
                 {CATEGORIES.map((cat) => (
                     <TouchableOpacity
@@ -164,17 +171,27 @@ export const WithdrawModal = ({ isVisible, onClose, availableBalance, refreshDat
             </View>
 
             <View style={styles.providerRow}>
-                <TouchableOpacity style={[styles.pCard, provider === 'mtn' && styles.activePCard]} onPress={() => setProvider('mtn')}>
+                <TouchableOpacity
+                    style={[styles.pCard, provider === 'mtn' && styles.activePCard]}
+                    onPress={() => setProvider('mtn')}
+                >
                     <View style={[styles.dot, { backgroundColor: '#FACC15' }]} />
                     <Text style={styles.pText}>MTN</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.pCard, provider === 'airtel' && styles.activePCard]} onPress={() => setProvider('airtel')}>
+                <TouchableOpacity
+                    style={[styles.pCard, provider === 'airtel' && styles.activePCard]}
+                    onPress={() => setProvider('airtel')}
+                >
                     <View style={[styles.dot, { backgroundColor: '#EF4444' }]} />
                     <Text style={styles.pText}>Airtel</Text>
                 </TouchableOpacity>
             </View>
 
-            <TouchableOpacity style={styles.mainBtn} onPress={handleWithdraw} disabled={loading}>
+            <TouchableOpacity
+                style={[styles.mainBtn, loading && { opacity: 0.7 }]}
+                onPress={handleWithdraw}
+                disabled={loading}
+            >
                 {loading ? <ActivityIndicator color="white" /> : <Text style={styles.mainBtnText}>Confirm Withdrawal</Text>}
             </TouchableOpacity>
         </ActionModal>

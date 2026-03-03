@@ -144,7 +144,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Theme.colors.background },
   content: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 40 },
-  mainCard: { width: '100%', marginTop: 20, padding: 24 },
+  mainCard: { width: '100%', marginTop: 20, padding: 2 },
   topSection: { marginBottom: 15 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   cardTitle: { color: '#94A3B8', fontFamily: 'SpaceGrotesk-Medium', fontSize: 14 },
