@@ -12,6 +12,8 @@ import { ActionButton } from '../components/ActionButton';
 import { DepositModal } from '../components/DepositModal';
 import { ServiceIcon } from '../components/ServiceIcon';
 import { WithdrawModal } from '../components/WithdrawModal';
+import { TransactionItem } from '../components/TransactionList';
+import { CATEGORIES } from '../constants/categories';
 import { formatUGX } from '../utils/currency';
 import { Theme } from '../theme/colors';
 
@@ -21,6 +23,7 @@ export default function HomeScreen() {
   const [showDeposit, setShowDeposit] = useState(false);
   const [showWithdraw, setShowWithdraw] = useState(false);
   const [isFetchingBalance, setIsFetchingBalance] = useState(true);
+  const [transactions, setTransactions] = useState<any[]>([]);
 
   const [balances, setBalances] = useState({
     total: 0,
@@ -36,18 +39,25 @@ export default function HomeScreen() {
 
       const [profileRes, transRes, budgetRes] = await Promise.all([
         supabase.from('profiles').select('full_name').eq('id', user.id).single(),
-        supabase.from('transactions').select('amount, type').eq('profile_id', user.id).eq('status', 'completed'),
-        supabase.from('budgets').select('allocated_amount, spent_amount').eq('profile_id', user.id)
+        // We fetch the full transaction row now, ordered by newest first
+        supabase.from('transactions')
+          .select('*')
+          .eq('profile_id', user.id)
+          .eq('status', 'completed')
+          .order('created_at', { ascending: false })
+          .limit(10), // Limit to 10 for the home screen feed
+        supabase.from('budgets').select('allocated_amount, spent_amount, category_id').eq('profile_id', user.id)
       ]);
 
       if (profileRes.data) setDisplayName(profileRes.data.full_name);
 
+      // 3. Store the raw transactions for the list
+      setTransactions(transRes.data || []);
+
       const totalIn = transRes.data?.filter(t => t.type === 'deposit').reduce((s, t) => s + Number(t.amount), 0) || 0;
       const totalOut = transRes.data?.filter(t => t.type === 'withdrawal').reduce((s, t) => s + Number(t.amount), 0) || 0;
-
       const currentTotal = totalIn - totalOut;
 
-      // 🔥 NEW MATH: Only count money that hasn't been spent yet in the budgets
       const remainingBudgeted = budgetRes.data?.reduce((s, b) => {
         const left = Number(b.allocated_amount) - Number(b.spent_amount);
         return s + (left > 0 ? left : 0);
@@ -128,6 +138,31 @@ export default function HomeScreen() {
           <ServiceIcon icon={<Tv size={22} color="#a855f7" />} label="TV" />
           <ServiceIcon icon={<LayoutGrid size={22} color="#94a3b8" />} label="More" />
         </View>
+
+        {/* --- TRANSACTION HISTORY SECTION --- */}
+        <View style={styles.historySection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Recent Activity</Text>
+            <TouchableOpacity><Text style={styles.seeAllText}>See All</Text></TouchableOpacity>
+          </View>
+
+          {transactions.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No transactions yet.</Text>
+            </View>
+          ) : (
+            transactions.map((item) => (
+              <TransactionItem
+                key={item.id}
+                type={item.type}
+                // Helper to find the name from your CATEGORIES constant
+                categoryName={CATEGORIES.find(c => c.id === item.category_id)?.name || 'Deposit'}
+                amount={item.amount}
+                date={item.created_at}
+              />
+            ))
+          )}
+        </View>
       </ScrollView>
 
       <DepositModal isVisible={showDeposit} onClose={() => { setShowDeposit(false); fetchBalance(); }} />
@@ -137,6 +172,7 @@ export default function HomeScreen() {
         availableBalance={balances.savings}
         refreshData={fetchBalance}
       />
+
     </SafeAreaView>
   );
 }
@@ -160,4 +196,14 @@ const styles = StyleSheet.create({
   sectionTitle: { color: 'white', fontFamily: 'SpaceGrotesk-Bold', fontSize: 18 },
   seeAllText: { color: Theme.colors.primary, fontSize: 14 },
   servicesGrid: { flexDirection: 'row', flexWrap: 'wrap', width: '100%' },
+  historySection: { marginTop: 10 },
+  emptyContainer: {
+    padding: 20,
+    alignItems: 'center',
+    backgroundColor: '#111111',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#27272A'
+  },
+  emptyText: { color: '#94A3B8', fontFamily: 'SpaceGrotesk-Medium' },
 });

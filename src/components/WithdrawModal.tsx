@@ -6,6 +6,7 @@ import {
 import { supabase } from '../lib/supabase';
 import { ActionModal } from './ActionModal';
 import { Smartphone } from 'lucide-react-native';
+import { CATEGORIES } from '../constants/categories';
 import { formatUGX } from '../utils/currency';
 import { Theme } from '../theme/colors';
 
@@ -15,14 +16,6 @@ interface WithdrawModalProps {
     availableBalance: number; // This is the "Savings/Unallocated" money from HomeScreen
     refreshData: () => void;
 }
-
-const CATEGORIES = [
-    { id: 1, name: 'Tuition', color: '#8B5CF6' },
-    { id: 2, name: 'Rent', color: '#10B981' },
-    { id: 3, name: 'Food', color: '#F59E0B' },
-    { id: 4, name: 'Transport', color: '#3B82F6' },
-    { id: 5, name: 'Personal', color: '#EC4899' },
-];
 
 export const WithdrawModal = ({ isVisible, onClose, availableBalance, refreshData }: WithdrawModalProps) => {
     const [amount, setAmount] = useState('');
