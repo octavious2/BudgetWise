@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity
 import { RouteProp } from '@react-navigation/native';
 import { Home, Wallet, PieChart, LayoutGrid, Settings } from 'lucide-react-native';
 import { Theme } from '../theme/colors';
+import { useNavigation } from '@react-navigation/native';
 
 
 import HomeScreen from '../screens/HomeScreen';
@@ -15,6 +16,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 const Tab = createBottomTabNavigator();
 
 export const TabNavigator = () => {
+  const navigation = useNavigation<any>();
   return (
     <View style={{ flex: 1, backgroundColor: Theme.colors.background }}>
       <Tab.Navigator
@@ -42,7 +44,7 @@ export const TabNavigator = () => {
         {/* 1. THE GAP: This screen does nothing, it just holds the space */}
         <Tab.Screen
           name="ActionHub"
-          component={HomeScreen} // Placeholder
+          component={WalletScreen} // Placeholder
           options={{
             tabBarLabel: () => null,
             tabBarIcon: () => null, // Hide the default icon
@@ -61,7 +63,7 @@ export const TabNavigator = () => {
       {/* 2. THE PROTRUDING INNOVATION: Floating above the bar */}
       <TouchableOpacity
         style={styles.fabButton}
-        onPress={() => { /* This will open your Wallet/Payment options */ }}
+        onPress={() => navigation.navigate('ActionHub')} // 5. Tell it to go to the center tab
       >
         <View style={styles.innerFab}>
           <Wallet color="white" size={32} />
