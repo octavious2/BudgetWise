@@ -20,13 +20,6 @@ export const HomeHeader = ({ name }: HomeHeaderProps) => {
                     <Bell size={22} color="white" />
                     <View style={styles.notificationDot} />
                 </TouchableOpacity>
-
-                <View style={styles.avatarContainer}>
-                    {/* We will eventually pull the actual image from Supabase Storage */}
-                    <View style={styles.avatarPlaceholder}>
-                        <Text style={styles.avatarText}>{name ? name[0] : 'U'}</Text>
-                    </View>
-                </View>
             </View>
         </View>
     );
@@ -72,21 +65,5 @@ const styles = StyleSheet.create({
         borderRadius: 4,
         borderWidth: 1.5,
         borderColor: Theme.colors.background,
-    },
-    avatarPlaceholder: {
-        width: 45,
-        height: 45,
-        borderRadius: 15,
-        backgroundColor: Theme.colors.primary,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    avatarContainer: {
-        marginLeft: 10,
-    },
-    avatarText: {
-        color: 'white',
-        fontFamily: 'SpaceGrotesk-Bold',
-        fontSize: 18,
     },
 });
