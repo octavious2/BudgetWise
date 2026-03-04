@@ -1,26 +1,34 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { QrCode, Copy, Wallet, LayoutGrid, Lock, Info, ArrowDown, ArrowUp } from 'lucide-react-native';
+import { QrCode, Wallet, LayoutGrid, Lock, Info } from 'lucide-react-native';
 import { Theme } from '../theme/colors';
 import { GlassCard } from '../components/GlassCard';
 import { formatUGX } from '../utils/currency';
+import { useWallet } from '../hooks/useWallet'; // Importing your new logic hub
 
 export default function WalletScreen() {
   const [showQR, setShowQR] = useState(false);
 
-  // Data to be linked to Supabase later
-  const walletId = "UG-STU-8829";
-  const balances = {
-    total: 1250000,
-    available: 250000, // 20%
-    budgeted: 750000,  // 60%
-    savings: 250000,   // 20%
+  // 1. Hook into the centralized wallet logic
+  const { total, available, budgeted, savings, loading, refreshWallet } = useWallet();
+
+  // 2. Helper to calculate percentage for the legend
+  const getPercentage = (value: number) => {
+    if (total === 0) return '0%';
+    return `${Math.round((value / total) * 100)}%`;
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        // 3. Add pull-to-refresh to update all screens at once
+        refreshControl={
+          <RefreshControl refreshing={loading} onRefresh={refreshWallet} tintColor={Theme.colors.primary} />
+        }
+      >
 
         {/* --- 1. IDENTITY SECTION --- */}
         <View style={styles.headerRow}>
@@ -33,7 +41,8 @@ export default function WalletScreen() {
         <View style={styles.idSection}>
           <View style={styles.idBadge}>
             <Text style={styles.idLabel}>WALLET ID:</Text>
-            <Text style={styles.idValue}>{walletId}</Text>
+            {/* Hardcoded ID for now, can be linked to profile.username later */}
+            <Text style={styles.idValue}>UG-STU-8829</Text>
             <TouchableOpacity onPress={() => setShowQR(!showQR)} style={styles.idIcon}>
               <QrCode size={18} color={Theme.colors.primary} />
             </TouchableOpacity>
@@ -47,27 +56,26 @@ export default function WalletScreen() {
           )}
         </View>
 
-        {/* --- 2. FUND DISTRIBUTION (Analytics) --- */}
+        {/* --- 2. FUND DISTRIBUTION (Dynamic) --- */}
         <GlassCard style={styles.chartCard}>
           <Text style={styles.sectionTitle}>FUND DISTRIBUTION</Text>
           <View style={styles.chartRow}>
-            {/* Donut Chart Placeholder - We can use a library later */}
             <View style={styles.donutPlaceholder}>
               <View style={styles.donutInner}>
                 <Text style={styles.donutTotalLabel}>Total</Text>
-                <Text style={styles.donutTotalValue}>UGX 1.2M</Text>
+                <Text style={styles.donutTotalValue}>{formatUGX(total)}</Text>
               </View>
             </View>
 
             <View style={styles.legend}>
-              <LegendItem color="#10B981" label="Available" value={balances.available} percent="20%" />
-              <LegendItem color="#F97316" label="Budgeted" value={balances.budgeted} percent="60%" />
-              <LegendItem color="#F59E0B" label="Savings" value={balances.savings} percent="20%" />
+              <LegendItem color="#10B981" label="Available" value={available} percent={getPercentage(available)} />
+              <LegendItem color="#F97316" label="Budgeted" value={budgeted} percent={getPercentage(budgeted)} />
+              <LegendItem color="#F59E0B" label="Savings" value={savings} percent={getPercentage(savings)} />
             </View>
           </View>
         </GlassCard>
 
-        {/* --- 3. MONEY POOLS (The Actions) --- */}
+        {/* --- 3. MONEY POOLS (Dynamic) --- */}
         <Text style={[styles.sectionTitle, { marginTop: 25, marginLeft: 5 }]}>MONEY POOLS</Text>
 
         {/* Available Pool */}
@@ -77,7 +85,7 @@ export default function WalletScreen() {
           </View>
           <View style={styles.poolInfo}>
             <Text style={styles.poolLabel}>Available Balance</Text>
-            <Text style={styles.poolAmount}>{formatUGX(balances.available)}</Text>
+            <Text style={styles.poolAmount}>{formatUGX(available)}</Text>
             <Text style={styles.poolSubtext}>Unallocated funds to spend or budget</Text>
           </View>
           <TouchableOpacity style={styles.viewBudgetsBtn}>
@@ -92,7 +100,7 @@ export default function WalletScreen() {
           </View>
           <View style={styles.poolInfo}>
             <Text style={styles.poolLabel}>Budgeted Funds</Text>
-            <Text style={styles.poolAmount}>{formatUGX(balances.budgeted)}</Text>
+            <Text style={styles.poolAmount}>{formatUGX(budgeted)}</Text>
             <Text style={styles.poolSubtext}>Allocated across categories</Text>
           </View>
           <TouchableOpacity style={styles.viewBudgetsBtn}>
@@ -107,7 +115,7 @@ export default function WalletScreen() {
           </View>
           <View style={styles.poolInfo}>
             <Text style={styles.poolLabel}>Savings (Locked)</Text>
-            <Text style={styles.poolAmount}>{formatUGX(balances.savings)}</Text>
+            <Text style={styles.poolAmount}>{formatUGX(savings)}</Text>
             <Text style={styles.poolSubtext}>Locked for your goals</Text>
           </View>
         </View>
@@ -116,6 +124,8 @@ export default function WalletScreen() {
     </SafeAreaView>
   );
 }
+
+// ... (LegendItem and Styles remain exactly as you had them)
 
 // Helper Component for Legend
 const LegendItem = ({ color, label, value, percent }: any) => (
