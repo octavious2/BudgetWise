@@ -1,16 +1,31 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, Dimensions, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Dimensions, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Theme } from '../../theme/colors';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
-import AsyncStorage from '@react-native-async-storage/async-storage'; // To remember they've seen it
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 
 const SLIDES = [
-    { id: '1', title: 'Track Spending', desc: 'See where your money goes with glass-morphism clarity.' },
-    { id: '2', title: 'Smart Budgets', desc: 'Set goals and let our AI keep you on track.' },
-    { id: '3', title: 'Secure Future', desc: 'Your data is encrypted and synced with Supabase.' },
+    {
+        id: '1',
+        title: 'Track Spending',
+        desc: 'See where your money goes with glass-morphism clarity.',
+        image: require('../../../assets/images/onboard1.png')
+    },
+    {
+        id: '2',
+        title: 'Smart Budgets',
+        desc: 'Set goals and let our AI keep you on track.',
+        image: require('../../../assets/images/onboard.png')
+    },
+    {
+        id: '3',
+        title: 'Secure Future',
+        desc: 'Your data is encrypted and synced with Supabase.',
+        image: require('../../../assets/images/icon.png')
+    },
 ];
 
 export default function OnboardingScreen({ onFinish }: any) {
@@ -19,42 +34,37 @@ export default function OnboardingScreen({ onFinish }: any) {
 
     const handleNext = async () => {
         if (currentSlideIndex < SLIDES.length - 1) {
-            // 2. This handles the sliding animation
-            flatListRef.current?.scrollToIndex({
-                index: currentSlideIndex + 1,
-                animated: true
-            });
+            flatListRef.current?.scrollToIndex({ index: currentSlideIndex + 1 });
             setCurrentSlideIndex(currentSlideIndex + 1);
         } else {
-            // 3. This handles the final transition
-            try {
-                await AsyncStorage.setItem('@onboarding_complete', 'true');
-                if (onFinish) {
-                    onFinish(); // This tells App.tsx to switch to Auth/Home
-                }
-            } catch (e) {
-                console.error("Failed to save onboarding state", e);
-            }
+            await AsyncStorage.setItem('@onboarding_complete', 'true');
+            if (onFinish) onFinish();
         }
     };
 
     return (
         <SafeAreaView style={styles.container}>
             <FlatList
-                ref={flatListRef} // Connect the ref
+                ref={flatListRef}
                 data={SLIDES}
                 horizontal
                 pagingEnabled
-                onMomentumScrollEnd={(e) => {
-                    const index = Math.round(e.nativeEvent.contentOffset.x / width);
-                    setCurrentSlideIndex(index);
-                }}
-                // ... rest of your FlatList props ...
+                showsHorizontalScrollIndicator={false}
+                scrollEnabled={false}
                 renderItem={({ item }) => (
                     <View style={styles.slide}>
-                        <Animated.View entering={FadeInUp.duration(600).delay(200)} style={styles.imagePlaceholder} />
-                        <Animated.Text entering={FadeInDown.duration(600).delay(400)} style={styles.title}>{item.title}</Animated.Text>
-                        <Animated.Text entering={FadeInDown.duration(600).delay(600)} style={styles.description}>{item.desc}</Animated.Text>
+                        <Animated.Image
+                            source={item.image}
+                            entering={FadeInUp.duration(800).delay(200)}
+                            style={styles.illustration}
+                            resizeMode="contain"
+                        />
+                        <Animated.Text entering={FadeInDown.duration(600).delay(400)} style={styles.title}>
+                            {item.title}
+                        </Animated.Text>
+                        <Animated.Text entering={FadeInDown.duration(600).delay(600)} style={styles.description}>
+                            {item.desc}
+                        </Animated.Text>
                     </View>
                 )}
             />
@@ -75,12 +85,13 @@ export default function OnboardingScreen({ onFinish }: any) {
         </SafeAreaView>
     );
 }
+
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Theme.colors.background },
     slide: { width, alignItems: 'center', padding: 40, justifyContent: 'center' },
-    imagePlaceholder: { width: 200, height: 200, backgroundColor: 'rgba(249, 115, 22, 0.1)', borderRadius: 100, marginBottom: 40 },
+    illustration: { width: width * 0.7, height: width * 0.7, marginBottom: 40 },
     title: { color: 'white', fontSize: 28, fontFamily: 'SpaceGrotesk-Bold', textAlign: 'center' },
-    description: { color: Theme.colors.textSecondary, textAlign: 'center', marginTop: 20, fontSize: 16, fontFamily: 'SpaceGrotesk-Regular' },
+    description: { color: '#94A3B8', textAlign: 'center', marginTop: 20, fontSize: 16, fontFamily: 'SpaceGrotesk-Regular', lineHeight: 24 },
     footer: { paddingHorizontal: 40, height: 150, justifyContent: 'space-between', paddingBottom: 50 },
     indicatorContainer: { flexDirection: 'row', justifyContent: 'center', gap: 8 },
     indicator: { height: 4, width: 10, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)' },
