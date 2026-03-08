@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { QrCode, Wallet, LayoutGrid, Lock, Info } from 'lucide-react-native';
+import { QrCode, Wallet, LayoutGrid, Lock, Info, Send, Download, Upload } from 'lucide-react-native';
 import { Theme } from '../theme/colors';
 import { GlassCard } from '../components/GlassCard';
 import { formatUGX } from '../utils/currency';
 import { useWallet } from '../hooks/useWallet'; // Importing your new logic hub
+import { ActionButton } from '../components/ActionButton';
 
 export default function WalletScreen() {
   const [showQR, setShowQR] = useState(false);
+    const [showDeposit, setShowDeposit] = useState(false);
+    const [showWithdraw, setShowWithdraw] = useState(false);
 
   // 1. Hook into the centralized wallet logic
   const { total, available, budgeted, savings, loading, refreshWallet } = useWallet();
@@ -55,6 +58,13 @@ export default function WalletScreen() {
             </GlassCard>
           )}
         </View>
+
+        <View style={styles.actionRow}>
+          <ActionButton icon={<Download size={24} color="white" />} label="Deposit" onPress={() => setShowDeposit(true)} />
+          <ActionButton icon={<Send size={24} color="white" />} label="Send" />
+          <ActionButton icon={<Upload color="white" size={24} />} label="Withdraw" onPress={() => setShowWithdraw(true)} />
+        </View>
+
 
         {/* --- 2. FUND DISTRIBUTION (Dynamic) --- */}
         <GlassCard style={styles.chartCard}>
@@ -104,7 +114,7 @@ export default function WalletScreen() {
             <Text style={styles.poolSubtext}>Allocated across categories</Text>
           </View>
           <TouchableOpacity style={styles.viewBudgetsBtn}>
-            <Text style={styles.viewBudgetsText}>View</Text>
+            <Text style={styles.viewBudgetsText}>View Budgets</Text>
           </TouchableOpacity>
         </View>
 
@@ -154,7 +164,7 @@ const styles = StyleSheet.create({
   qrContainer: { marginTop: 15, padding: 25, alignItems: 'center' },
   qrText: { color: '#94A3B8', fontSize: 12, marginTop: 12, fontFamily: 'SpaceGrotesk-Medium' },
 
-  chartCard: { padding: 0 },
+  chartCard: { padding: 0, marginTop:20 },
   sectionTitle: { color: '#71717A', fontSize: 12, fontFamily: 'SpaceGrotesk-Bold', letterSpacing: 1, marginBottom: 15 },
   chartRow: { flexDirection: 'row', alignItems: 'center' },
   donutPlaceholder: { width: 120, height: 120, borderRadius: 60, borderWidth: 10, borderColor: '#F97316', justifyContent: 'center', alignItems: 'center' },
@@ -169,6 +179,7 @@ const styles = StyleSheet.create({
   legendValue: { color: 'white', fontSize: 13, fontFamily: 'SpaceGrotesk-Bold' },
   legendPercent: { color: '#71717A', fontSize: 11 },
 
+  actionRow: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginTop: 5,},
   poolCard: { flexDirection: 'row', alignItems: 'center', padding: 16, marginBottom: 12, borderLeftWidth: 4, borderLeftColor: '#10B981' },
   secondaryPool: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#111111', borderRadius: 16, marginBottom: 12, borderWidth: 1, borderColor: '#27272A' },
   iconBox: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },

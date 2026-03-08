@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, InteractionManager } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import {
   Send, Download, Upload, Eye, EyeOff, PhoneCall,
   Wifi, Zap, Droplets, Tv, LayoutGrid
 } from 'lucide-react-native';
+
+// Components & Theme
 import { HomeHeader } from '../components/HomeHeader';
 import { GlassCard } from '../components/GlassCard';
 import { ActionButton } from '../components/ActionButton';
@@ -17,72 +19,65 @@ import { CATEGORIES } from '../constants/categories';
 import { formatUGX } from '../utils/currency';
 import { Theme } from '../theme/colors';
 
+// Logic Hook
+import { useWallet } from '../hooks/useWallet';
+
 export default function HomeScreen() {
   const [displayName, setDisplayName] = useState('User');
   const [isBalanceVisible, setIsBalanceVisible] = useState(true);
   const [showDeposit, setShowDeposit] = useState(false);
   const [showWithdraw, setShowWithdraw] = useState(false);
-  const [isFetchingBalance, setIsFetchingBalance] = useState(true);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const [balances, setBalances] = useState({
-    total: 0,
-    budgeted: 0,
-    savings: 0, // This is our 'Available to Spend'
-  });
+  // 1. Centralized Balance Logic
+  const { total, budgeted, available, loading, refreshWallet } = useWallet();
 
-  const fetchBalance = async () => {
-    setIsFetchingBalance(true);
+  // 2. Fetch Home-specific data (Profile & Recent Activity)
+  const fetchHomeData = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const [profileRes, transRes, budgetRes] = await Promise.all([
+      const [profileRes, transRes] = await Promise.all([
         supabase.from('profiles').select('full_name').eq('id', user.id).single(),
-        // We fetch the full transaction row now, ordered by newest first
         supabase.from('transactions')
           .select('*')
           .eq('profile_id', user.id)
           .eq('status', 'completed')
           .order('created_at', { ascending: false })
-          .limit(10), // Limit to 10 for the home screen feed
-        supabase.from('budgets').select('allocated_amount, spent_amount, category_id').eq('profile_id', user.id)
+          .limit(10),
       ]);
 
       if (profileRes.data) setDisplayName(profileRes.data.full_name);
-
-      // 3. Store the raw transactions for the list
       setTransactions(transRes.data || []);
-
-      const totalIn = transRes.data?.filter(t => t.type === 'deposit').reduce((s, t) => s + Number(t.amount), 0) || 0;
-      const totalOut = transRes.data?.filter(t => t.type === 'withdrawal').reduce((s, t) => s + Number(t.amount), 0) || 0;
-      const currentTotal = totalIn - totalOut;
-
-      const remainingBudgeted = budgetRes.data?.reduce((s, b) => {
-        const left = Number(b.allocated_amount) - Number(b.spent_amount);
-        return s + (left > 0 ? left : 0);
-      }, 0) || 0;
-
-      setBalances({
-        total: currentTotal,
-        budgeted: remainingBudgeted,
-        savings: currentTotal - remainingBudgeted
-      });
-
     } catch (error) {
-      console.error('Fetch Error:', error);
-    } finally {
-      setIsFetchingBalance(false);
+      console.error('Home Data Fetch Error:', error);
     }
   };
 
-  useEffect(() => { fetchBalance(); }, []);
+  useEffect(() => {
+    fetchHomeData();
+  }, []);
+
+  // 3. Sync Refresh Logic
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([refreshWallet(), fetchHomeData()]);
+    setRefreshing(false);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Theme.colors.primary} />
+        }
+      >
         <HomeHeader name={displayName} />
 
+        {/* --- MAIN BALANCE CARD --- */}
         <GlassCard style={styles.mainCard}>
           <View style={styles.topSection}>
             <View style={styles.cardHeader}>
@@ -92,39 +87,39 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
             <Text style={styles.cardAmount}>
-              {isBalanceVisible ? (isFetchingBalance ? '...' : formatUGX(balances.total)) : 'UGX ••••••'}
+              {isBalanceVisible ? (loading ? '...' : formatUGX(total)) : 'UGX ••••••'}
             </Text>
           </View>
 
-          {/* DIVIDER */}
           <View style={styles.cardDivider} />
 
-          {/* BOTTOM SECTION: Budgeted vs Savings */}
           <View style={styles.bottomSection}>
             <View style={styles.statItem}>
               <Text style={styles.statLabel}>Budgeted</Text>
               <Text style={styles.statValue}>
-                {isBalanceVisible ? formatUGX(balances.budgeted) : '••••'}
+                {isBalanceVisible ? formatUGX(budgeted) : '••••'}
               </Text>
             </View>
 
             <View style={styles.verticalDivider} />
 
             <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Savings</Text>
+              <Text style={styles.statLabel}>Savings (Available)</Text>
               <Text style={styles.statValue}>
-                {isBalanceVisible ? formatUGX(balances.savings) : '••••'}
+                {isBalanceVisible ? formatUGX(available) : '••••'}
               </Text>
             </View>
           </View>
         </GlassCard>
 
+        {/* --- QUICK ACTIONS --- */}
         <View style={styles.actionRow}>
           <ActionButton icon={<Download size={24} color="white" />} label="Deposit" onPress={() => setShowDeposit(true)} />
           <ActionButton icon={<Send size={24} color="white" />} label="Send" />
-          <ActionButton icon={<Upload color="white" />} label="Withdraw" onPress={() => setShowWithdraw(true)} />
+          <ActionButton icon={<Upload color="white" size={24} />} label="Withdraw" onPress={() => setShowWithdraw(true)} />
         </View>
 
+        {/* --- SERVICES GRID --- */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Quick Services</Text>
           <TouchableOpacity><Text style={styles.seeAllText}>See All</Text></TouchableOpacity>
@@ -139,7 +134,7 @@ export default function HomeScreen() {
           <ServiceIcon icon={<LayoutGrid size={22} color="#94a3b8" />} label="More" />
         </View>
 
-        {/* --- TRANSACTION HISTORY SECTION --- */}
+        {/* --- RECENT ACTIVITY --- */}
         <View style={styles.historySection}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Activity</Text>
@@ -155,7 +150,6 @@ export default function HomeScreen() {
               <TransactionItem
                 key={item.id}
                 type={item.type}
-                // Helper to find the name from your CATEGORIES constant
                 categoryName={CATEGORIES.find(c => c.id === item.category_id)?.name || 'Deposit'}
                 amount={item.amount}
                 date={item.created_at}
@@ -165,14 +159,17 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
 
-      <DepositModal isVisible={showDeposit} onClose={() => { setShowDeposit(false); fetchBalance(); }} />
+      {/* --- MODALS --- */}
+      <DepositModal
+        isVisible={showDeposit}
+        onClose={() => { setShowDeposit(false); handleRefresh(); }}
+      />
       <WithdrawModal
         isVisible={showWithdraw}
-        onClose={() => { setShowWithdraw(false); fetchBalance(); }}
-        availableBalance={balances.savings}
-        refreshData={fetchBalance}
+        onClose={() => { setShowWithdraw(false); handleRefresh(); }}
+        availableBalance={available}
+        refreshData={handleRefresh}
       />
-
     </SafeAreaView>
   );
 }
@@ -181,7 +178,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Theme.colors.background },
   content: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 40 },
   mainCard: { width: '100%', marginTop: 20, padding: 2 },
-  topSection: { marginBottom: 15 },
+  topSection: { marginBottom: 5 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   cardTitle: { color: '#94A3B8', fontFamily: 'SpaceGrotesk-Medium', fontSize: 14 },
   cardAmount: { color: 'white', fontSize: 32, fontFamily: 'SpaceGrotesk-Bold', marginTop: 8 },
@@ -190,7 +187,7 @@ const styles = StyleSheet.create({
   statItem: { flex: 1 },
   statLabel: { color: 'rgba(255,255,255,0.5)', fontSize: 11, fontFamily: 'SpaceGrotesk-Medium', marginBottom: 4 },
   statValue: { color: 'white', fontSize: 15, fontFamily: 'SpaceGrotesk-Bold' },
-  verticalDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.1)'},
+  verticalDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.1)', marginHorizontal: 15 },
   actionRow: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginTop: 30 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: 35, marginBottom: 20 },
   sectionTitle: { color: 'white', fontFamily: 'SpaceGrotesk-Bold', fontSize: 18 },
@@ -198,9 +195,9 @@ const styles = StyleSheet.create({
   servicesGrid: { flexDirection: 'row', flexWrap: 'wrap', width: '100%' },
   historySection: { marginTop: 10 },
   emptyContainer: {
-    padding: 20,
+    padding: 30,
     alignItems: 'center',
-    backgroundColor: '#111111',
+    backgroundColor: '#09090B',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#27272A'
