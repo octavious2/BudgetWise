@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, Dimensions, TouchableOpacity } from '
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Theme } from '../../theme/colors';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import AsyncStorage from '@react-native-async-storage/async-storage'; // To remember they've seen it
 
 const { width } = Dimensions.get('window');
 
@@ -12,68 +13,68 @@ const SLIDES = [
     { id: '3', title: 'Secure Future', desc: 'Your data is encrypted and synced with Supabase.' },
 ];
 
-export default function OnboardingScreen({ navigation }: any) {
+export default function OnboardingScreen({ onFinish }: any) {
     const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+    const flatListRef = useRef<FlatList>(null);
+
+    const handleNext = async () => {
+        if (currentSlideIndex < SLIDES.length - 1) {
+            // 2. This handles the sliding animation
+            flatListRef.current?.scrollToIndex({
+                index: currentSlideIndex + 1,
+                animated: true
+            });
+            setCurrentSlideIndex(currentSlideIndex + 1);
+        } else {
+            // 3. This handles the final transition
+            try {
+                await AsyncStorage.setItem('@onboarding_complete', 'true');
+                if (onFinish) {
+                    onFinish(); // This tells App.tsx to switch to Auth/Home
+                }
+            } catch (e) {
+                console.error("Failed to save onboarding state", e);
+            }
+        }
+    };
 
     return (
         <SafeAreaView style={styles.container}>
             <FlatList
+                ref={flatListRef} // Connect the ref
                 data={SLIDES}
                 horizontal
                 pagingEnabled
-                showsHorizontalScrollIndicator={false}
                 onMomentumScrollEnd={(e) => {
                     const index = Math.round(e.nativeEvent.contentOffset.x / width);
                     setCurrentSlideIndex(index);
                 }}
+                // ... rest of your FlatList props ...
                 renderItem={({ item }) => (
                     <View style={styles.slide}>
-                        <Animated.View
-                            entering={FadeInUp.duration(600).delay(200)}
-                            style={styles.imagePlaceholder}
-                        />
-
-                        <Animated.Text
-                            entering={FadeInDown.duration(600).delay(400)}
-                            style={styles.title}
-                        >
-                            {item.title}
-                        </Animated.Text>
-
-                        <Animated.Text
-                            entering={FadeInDown.duration(600).delay(600)}
-                            style={styles.description}
-                        >
-                            {item.desc}
-                        </Animated.Text>
+                        <Animated.View entering={FadeInUp.duration(600).delay(200)} style={styles.imagePlaceholder} />
+                        <Animated.Text entering={FadeInDown.duration(600).delay(400)} style={styles.title}>{item.title}</Animated.Text>
+                        <Animated.Text entering={FadeInDown.duration(600).delay(600)} style={styles.description}>{item.desc}</Animated.Text>
                     </View>
                 )}
             />
 
-            {/* Footer: Indicators and Button */}
             <View style={styles.footer}>
                 <View style={styles.indicatorContainer}>
                     {SLIDES.map((_, index) => (
-                        <View
-                            key={index}
-                            style={[styles.indicator, currentSlideIndex === index && styles.activeIndicator]}
-                        />
+                        <View key={index} style={[styles.indicator, currentSlideIndex === index && styles.activeIndicator]} />
                     ))}
                 </View>
 
-                <TouchableOpacity
-                    style={styles.button}
-                    onPress={() => currentSlideIndex === 2 ? console.log('Go to Auth') : null}
-                >
+                <TouchableOpacity style={styles.button} onPress={handleNext}>
                     <Text style={styles.buttonText}>
-                        {currentSlideIndex === 2 ? 'Get Started' : 'Next'}
+                        {currentSlideIndex === SLIDES.length - 1 ? 'Get Started' : 'Next'}
                     </Text>
                 </TouchableOpacity>
             </View>
         </SafeAreaView>
     );
 }
-
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Theme.colors.background },
     slide: { width, alignItems: 'center', padding: 40, justifyContent: 'center' },
