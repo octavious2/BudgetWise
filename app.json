@@ -5,35 +5,27 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "userInterfaceStyle": "dark",
     "splash": {
       "image": "./assets/images/onboard.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#09090B"
     },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true
     },
     "android": {
+      "package": "com.octechug.BudgetWise",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/onboard1.png",
-        "backgroundColor": "#ffffff"
-      },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
-      "package": "com.octechug.BudgetWise"
+        "backgroundColor": "#09090B"
+      }
     },
     "web": {
       "favicon": "./assets/images/icon.png"
-    },
-    "plugins": [
-      "expo-font"
-    ],
-    "extra": {
-      "eas": {
-        "projectId": "3db250a3-6d7b-4bbc-8425-712147a11407"
-      }
     }
   }
 }
